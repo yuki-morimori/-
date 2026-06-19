@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<!-- ★このサイトの社名・実績・連絡先などの内容は「仮」です。確定後に差し替えます（_制作メモ.txt 参照）。 -->
+<title>合同会社ステップアップ｜建設業の事務を、まるごと自動化</title>
+<meta name="description" content="手書きの作業日報をスマホで撮るだけ。給料明細・請求書・支払明細書を、御社の様式そのままで自動作成する建設業向けAI-OCRツールの開発・販売。合同会社ステップアップ。">
+<meta name="theme-color" content="#10151d">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="合同会社ステップアップ">
+<meta property="og:title" content="合同会社ステップアップ｜建設業の事務を、まるごと自動化">
+<meta property="og:description" content="手書きの作業日報をスマホで撮るだけで、帳票を自動作成。建設業向けAI-OCR。">
+<meta property="og:url" content="https://step-up.app/">
+<meta property="og:locale" content="ja_JP">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="canonical" href="https://step-up.app/">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@500;600&family=Zen+Kaku+Gothic+New:wght@400;500;700;900&display=swap" rel="stylesheet">
+<link rel="icon" href="assets/img/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="css/style.css">
+<script type="application/ld+json">
+{
+  "@context":"https://schema.org","@type":"Organization",
+  "name":"合同会社ステップアップ","url":"https://step-up.app/",
+  "email":"info@step-up.app","telephone":"+81-90-4813-5963",
+  "description":"建設業向けAI-OCR（作業日報の自動帳票化）の開発・販売。",
+  "founder":{"@type":"Person","name":"西森 邑紀"}
+}
+</script>
+</head>
+<body>
+<div class="progress" id="progress" aria-hidden="true"></div>
+
+<header class="head" id="head">
+  <div class="head__in">
+    <a href="#hero" class="logo" aria-label="合同会社ステップアップ トップへ">
+      <svg class="logo__mark" viewBox="0 0 32 32" fill="none" aria-hidden="true">
+        <path d="M4 26 L12 18 L18 22 L28 8" stroke="#d9531e" stroke-width="2.4" stroke-linecap="square"/>
+        <path d="M22 8 H28 V14" stroke="#d9531e" stroke-width="2.4" stroke-linecap="square"/>
+      </svg>
+      <b>STEP&nbsp;UP<span>合同会社ステップアップ</span></b>
+    </a>
+    <nav class="nav" id="nav" aria-label="メインナビゲーション">
+      <a href="#issue">課題</a>
+      <a href="#product">プロダクト</a>
+      <a href="#features">特長</a>
+      <a href="#company">会社情報</a>
+      <a href="#contact" class="nav__cta">相談する</a>
+    </nav>
+    <button class="burger" id="burger" aria-label="メニューを開く" aria-expanded="false" aria-controls="nav">
+      <span></span><span></span><span></span>
+    </button>
+  </div>
+</header>
+
+<!-- ============ HERO ============ -->
+<section class="hero" id="hero">
+  <canvas id="bg3d" aria-hidden="true"></canvas>
+  <div class="hero__grad"></div>
+  <a href="#issue" class="hero__scroll" aria-label="下へスクロール">SCROLL</a>
+  <div class="hero__in" id="hero-copy">
+    <p class="hero__meta"><i></i>Construction Back-office, Automated</p>
+    <h1 class="hero__title">手書きの現場を、<br>そのまま<em>数字</em>に。</h1>
+    <div class="hero__foot">
+      <p class="hero__say">作業日報をスマホで撮るだけ。給料明細・請求書・支払明細書を、御社の様式そのままに自動でつくる。建設業のための、買い切りのAI-OCRツールを開発・販売しています。</p>
+      <div class="hero__cta">
+        <a href="#product" class="btn btn--fill">プロダクトを見る
+          <svg width="16" height="12" viewBox="0 0 16 12" fill="none" aria-hidden="true"><path d="M1 6h13M10 1l5 5-5 5" stroke="currentColor" stroke-width="1.6"/></svg>
+        </a>
+        <a href="#contact" class="btn btn--line">相談する</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 対象業種マーキー -->
+<div class="marquee" aria-hidden="true">
+  <div class="marquee__track">
+    <span>土木・基礎</span><span>とび・足場</span><span>解体</span><span>外構</span><span>内装</span><span>電気・設備</span><span>鳶土工</span><span>造園</span>
+    <span>土木・基礎</span><span>とび・足場</span><span>解体</span><span>外構</span><span>内装</span><span>電気・設備</span><span>鳶土工</span><span>造園</span>
+  </div>
+</div>
+
+<!-- ============ 01 課題 ============ -->
+<section class="section" id="issue">
+  <div class="wrap split">
+    <div data-reveal>
+      <div class="kicker">
+        <span class="kicker__no">01</span><span class="kicker__line"></span>
+        <span class="kicker__label">Issue</span><span class="kicker__ja">／ 現場の事務</span>
+      </div>
+      <h2 class="h-display">月末の事務に、<br>夜を溶かしていませんか。</h2>
+    </div>
+    <div data-reveal data-stagger="1">
+      <p class="lead measure">紙の日報、Excelへの手入力、名前の表記ゆれ、様式に合わせた帳票づくり。建設業のバックオフィスは、いまも多くを“人の根気”が支えています。</p>
+      <div class="intro__list">
+        <div class="intro__row"><b>あ</b><div><h3>手入力と転記</h3><p>日報の数字を一枚ずつExcelへ。月末はこれだけで数日。</p></div></div>
+        <div class="intro__row"><b>い</b><div><h3>名寄せ・表記ゆれ</h3><p>同じ人・同じ取引先が、書く人によって別名に。集計が合わない。</p></div></div>
+        <div class="intro__row"><b>う</b><div><h3>様式合わせ</h3><p>給料明細・請求書・支払明細書を、会社ごとの様式で作り直す手間。</p></div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 02 プロダクト ============ -->
+<section class="section section--dark" id="product">
+  <div class="wrap">
+    <div data-reveal>
+      <div class="kicker">
+        <span class="kicker__no">02</span><span class="kicker__line"></span>
+        <span class="kicker__label">Product</span><span class="kicker__ja">／ 作業日報OCR</span>
+      </div>
+      <h2 class="h-display measure">撮る、で終わらせる。<br>あとはAIが帳票まで。</h2>
+    </div>
+    <div class="steps">
+      <div class="step" data-reveal data-stagger="0">
+        <p class="step__no">Step 01</p>
+        <div class="step__icon">
+          <svg viewBox="0 0 38 38" fill="none" aria-hidden="true"><rect x="3" y="9" width="32" height="23" stroke="currentColor" stroke-width="1.6"/><path d="M13 9l3-4h6l3 4" stroke="currentColor" stroke-width="1.6"/><circle cx="19" cy="20" r="6" stroke="currentColor" stroke-width="1.6"/></svg>
+        </div>
+        <h3>撮る</h3><p>現場の手書き日報を、スマホで一枚撮影。専用アプリも、面倒な設定も不要。</p>
+      </div>
+      <div class="step" data-reveal data-stagger="1">
+        <p class="step__no">Step 02</p>
+        <div class="step__icon">
+          <svg viewBox="0 0 38 38" fill="none" aria-hidden="true"><path d="M19 4v6M19 28v6M4 19h6M28 19h6" stroke="currentColor" stroke-width="1.6"/><rect x="11" y="11" width="16" height="16" stroke="currentColor" stroke-width="1.6"/></svg>
+        </div>
+        <h3>AIが読む</h3><p>Vision AIが手書きを文字化。崩し字も補正し、人・取引先を自動で名寄せ。</p>
+      </div>
+      <div class="step" data-reveal data-stagger="2">
+        <p class="step__no">Step 03</p>
+        <div class="step__icon">
+          <svg viewBox="0 0 38 38" fill="none" aria-hidden="true"><rect x="7" y="5" width="24" height="28" stroke="currentColor" stroke-width="1.6"/><path d="M12 13h14M12 19h14M12 25h9" stroke="currentColor" stroke-width="1.6"/></svg>
+        </div>
+        <h3>集計する</h3><p>人工・残業・単価を自動で集計。番割（配置表）も読み取って照合のヒントに。</p>
+      </div>
+      <div class="step" data-reveal data-stagger="3">
+        <p class="step__no">Step 04</p>
+        <div class="step__icon">
+          <svg viewBox="0 0 38 38" fill="none" aria-hidden="true"><path d="M19 4v20M11 16l8 8 8-8" stroke="currentColor" stroke-width="1.6"/><path d="M6 30h26" stroke="currentColor" stroke-width="1.6"/></svg>
+        </div>
+        <h3>帳票が出る</h3><p>給料明細・請求書・支払明細書を、御社の既存様式そのままで自動出力。</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 03 特長 ============ -->
+<section class="section" id="features">
+  <div class="wrap">
+    <div data-reveal>
+      <div class="kicker">
+        <span class="kicker__no">03</span><span class="kicker__line"></span>
+        <span class="kicker__label">Why Us</span><span class="kicker__ja">／ 選ばれる理由</span>
+      </div>
+      <h2 class="h-display">道具として、長く使えること。</h2>
+    </div>
+
+    <div class="feat" data-reveal>
+      <span class="feat__no">i</span>
+      <div>
+        <span class="feat__ico"><svg viewBox="0 0 30 30" fill="none" aria-hidden="true"><path d="M3 15l5-9h14l5 9-12 12L3 15z" stroke="currentColor" stroke-width="1.6"/><path d="M11 15l4 4 4-4" stroke="currentColor" stroke-width="1.6"/></svg></span>
+        <h3>買い切り。<br>毎月のコストに縛られない。</h3>
+      </div>
+      <p class="feat__mid">サブスクではなく買い切りの思想。導入してからの月額に怯えず、自社の道具として腰を据えて使えます。会社ごとに専用exe・マシン紐付けライセンスで提供。</p>
+    </div>
+
+    <div class="feat" data-reveal>
+      <span class="feat__no">ii</span>
+      <div>
+        <span class="feat__ico"><svg viewBox="0 0 30 30" fill="none" aria-hidden="true"><rect x="6" y="13" width="18" height="13" stroke="currentColor" stroke-width="1.6"/><path d="M10 13v-3a5 5 0 0110 0v3" stroke="currentColor" stroke-width="1.6"/></svg></span>
+        <h3>写真は、社外に出さない設計。</h3>
+      </div>
+      <p class="feat__mid">日報の写真は手元で処理し、外部に貯め込まない方針。デモの体験版でも送信画像は処理後すぐ削除。現場情報の扱いに配慮しています。</p>
+    </div>
+
+    <div class="feat" data-reveal>
+      <span class="feat__no">iii</span>
+      <div>
+        <span class="feat__ico"><svg viewBox="0 0 30 30" fill="none" aria-hidden="true"><rect x="5" y="5" width="9" height="9" stroke="currentColor" stroke-width="1.6"/><rect x="16" y="5" width="9" height="9" stroke="currentColor" stroke-width="1.6"/><rect x="5" y="16" width="9" height="9" stroke="currentColor" stroke-width="1.6"/><path d="M16 20.5h9M20.5 16v9" stroke="currentColor" stroke-width="1.6"/></svg></span>
+        <h3>既存の様式に、合わせにいく。</h3>
+      </div>
+      <p class="feat__mid">新しい様式を覚えてもらうのではなく、いま使っている帳票の形に出力を合わせます。現場のやり方を変えないのが、いちばん続く。</p>
+    </div>
+
+    <div class="feat" data-reveal>
+      <span class="feat__no">iv</span>
+      <div>
+        <span class="feat__ico"><svg viewBox="0 0 30 30" fill="none" aria-hidden="true"><path d="M15 3a12 12 0 100 24 12 12 0 000-24z" stroke="currentColor" stroke-width="1.6"/><path d="M15 9v6l4 3" stroke="currentColor" stroke-width="1.6"/></svg></span>
+        <h3>覚えて、賢くなる。</h3>
+      </div>
+      <p class="feat__mid">訂正やマスタの修正から表記ゆれを学習し、次からは自動で正しく名寄せ。使うほど手間が減っていきます。導入後も継続してサポート。</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 実績（仮の数字） ============ -->
+<section class="section section--paper2">
+  <div class="wrap" data-reveal>
+    <div class="kicker">
+      <span class="kicker__no">―</span><span class="kicker__line"></span>
+      <span class="kicker__label">By the numbers</span><span class="kicker__ja">／ 数字で見る（仮）</span>
+    </div>
+    <div class="metrics">
+      <div class="metric"><div class="metric__n"><span data-count="90" class="tnum">0</span><span class="u">%減</span></div><p class="metric__l">月末の転記・集計にかけていた時間（試算）</p></div>
+      <div class="metric"><div class="metric__n"><span data-count="3" class="tnum">0</span><span class="u">様式</span></div><p class="metric__l">給料明細・請求書・支払明細書を自動出力</p></div>
+      <div class="metric"><div class="metric__n"><span data-count="0" data-dec="0" class="tnum">0</span><span class="u">円/月</span></div><p class="metric__l">買い切りだから、月額ランニングなし</p></div>
+    </div>
+    <p class="lead" style="margin-top:22px;font-size:12px">※数値はイメージ（仮）です。確定値に差し替えます。</p>
+  </div>
+</section>
+
+<!-- ============ 04 会社情報 ============ -->
+<section class="section" id="company">
+  <div class="wrap split">
+    <div data-reveal>
+      <div class="kicker">
+        <span class="kicker__no">04</span><span class="kicker__line"></span>
+        <span class="kicker__label">Company</span><span class="kicker__ja">／ 会社情報</span>
+      </div>
+      <h2 class="h-display">合同会社<br>ステップアップ</h2>
+      <p class="lead measure" style="margin-top:18px">建設業の現場に寄り添って、事務の手間を一段ずつ減らしていく。小さく確かなDXの道具を、つくって届けています。</p>
+    </div>
+    <div data-reveal data-stagger="1">
+      <div class="facts">
+        <dl><dt>商号</dt><dd>合同会社ステップアップ</dd></dl>
+        <dl><dt>代表</dt><dd>西森 邑紀</dd></dl>
+        <dl><dt>事業内容</dt><dd>建設業向けAI-OCR（作業日報の自動帳票化）の開発・販売／業務効率化の支援</dd></dl>
+        <dl><dt>電話</dt><dd><a href="tel:09048135963">090-4813-5963</a></dd></dl>
+        <dl><dt>メール</dt><dd><a href="mailto:info@step-up.app">info@step-up.app</a></dd></dl>
+        <dl><dt>Web</dt><dd><a href="https://step-up.app">step-up.app</a></dd></dl>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 05 お問い合わせ ============ -->
+<section class="section section--dark" id="contact">
+  <div class="wrap cta__grid">
+    <div data-reveal>
+      <div class="kicker">
+        <span class="kicker__no">05</span><span class="kicker__line"></span>
+        <span class="kicker__label">Contact</span><span class="kicker__ja">／ ご相談</span>
+      </div>
+      <p class="cta__big">まずは、<br>御社の日報を<br>見せてください。</p>
+      <div class="contacts">
+        <a href="tel:09048135963"><span>お電話</span><b>090-4813-5963</b></a>
+        <a href="mailto:info@step-up.app"><span>メール</span><b>info@step-up.app</b></a>
+      </div>
+    </div>
+    <form class="form" name="contact" method="POST" data-netlify="true" netlify-honeypot="bot-field" data-reveal data-stagger="1">
+      <input type="hidden" name="form-name" value="contact">
+      <p class="form__hp"><label>この欄は空のまま<input name="bot-field"></label></p>
+      <label>お名前<input type="text" name="name" required></label>
+      <label>会社名<input type="text" name="company"></label>
+      <label>電話番号<input type="tel" name="tel" required></label>
+      <label>メールアドレス<input type="email" name="email"></label>
+      <label>ご相談内容<textarea name="message" rows="4" required></textarea></label>
+      <label class="form__agree"><input type="checkbox" required> <a href="privacy.html" target="_blank" rel="noopener">プライバシーポリシー</a>に同意します</label>
+      <button type="submit" class="btn btn--fill" style="justify-content:center">この内容で送信する
+        <svg width="16" height="12" viewBox="0 0 16 12" fill="none" aria-hidden="true"><path d="M1 6h13M10 1l5 5-5 5" stroke="currentColor" stroke-width="1.6"/></svg>
+      </button>
+    </form>
+  </div>
+</section>
+
+<footer class="foot">
+  <div class="foot__top">
+    <div class="foot__brand">STEP UP<span>合同会社ステップアップ</span></div>
+    <nav class="foot__nav" aria-label="フッターナビ">
+      <a href="#issue">課題</a><a href="#product">プロダクト</a><a href="#features">特長</a><a href="#company">会社情報</a><a href="#contact">お問い合わせ</a><a href="privacy.html">プライバシーポリシー</a>
+    </nav>
+  </div>
+  <div class="foot__low">
+    <span>© 2026 合同会社ステップアップ（このサイトの内容は仮です）</span>
+    <span>TEL 090-4813-5963 ／ info@step-up.app</span>
+  </div>
+</footer>
+
+<!-- 進捗バーは main の onScroll で使用 -->
+<script>
+  /* スクロール進捗バー（軽量・インライン） */
+  (function(){var p=document.getElementById('progress');if(!p)return;
+   addEventListener('scroll',function(){var h=document.documentElement.scrollHeight-innerHeight;
+   p.style.width=(h>0?(scrollY/h)*100:0)+'%';},{passive:true});})();
+</script>
+<style>.progress{position:fixed;top:0;left:0;height:2px;width:0;background:var(--accent);z-index:200;transition:width .1s linear}</style>
+
+<!-- Three.js（CDN）→ 3Dヒーロー -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js" defer></script>
+<script src="js/three-scene.js" defer></script>
+<script src="js/main.js" defer></script>
+</body>
+</html>

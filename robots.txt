@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://step-up.app/sitemap.xml
