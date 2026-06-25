@@ -12,7 +12,7 @@
     --shadow:0 1px 3px rgba(0,0,0,.12);
   }
   *{box-sizing:border-box}
-  html,body{margin:0;height:100%}
+  html,body{margin:0;min-height:100%}
   body{
     font-family:-apple-system,"Hiragino Kaku Gothic ProN","Noto Sans JP",sans-serif;background:var(--bg);color:var(--ink);
     -webkit-tap-highlight-color:transparent;-webkit-user-select:none;-ms-user-select:none;user-select:none;-webkit-touch-callout:none;
@@ -29,6 +29,7 @@
   .selinfo a{cursor:pointer;text-decoration:underline}
   .selinfo .sbtn{padding:3px 8px;border:1px solid var(--blue);background:#eef4ff;color:var(--blue);border-radius:6px;font-size:12px;font-weight:700;cursor:pointer}
   .toolbtn{padding:5px 10px;border:1px solid var(--line);background:#fff;border-radius:8px;font-size:12px;cursor:pointer}
+  .toolbtn.mode{border-color:var(--blue);color:var(--blue);font-weight:700}
   .presence{margin-left:auto;display:flex;gap:4px;align-items:center;font-size:12px;color:var(--sub)}
   .ava{width:22px;height:22px;border-radius:50%;background:var(--green);color:#fff;display:grid;place-items:center;font-size:11px;border:2px solid #fff;box-shadow:0 0 0 1px var(--green)}
   .alertbar{margin-top:6px;font-size:13px;display:flex;gap:12px;flex-wrap:wrap;color:var(--sub)}
@@ -114,6 +115,7 @@
     <button class="navbtn" id="nextDay">▶</button>
     <span class="total" id="total"></span>
     <span class="selinfo" id="selinfo"></span>
+    <button class="toolbtn mode" id="modeBtn">かんたん操作</button>
     <button class="toolbtn" id="copyPrev">前日コピー</button>
     <button class="toolbtn" id="resetAll">初期化</button>
     <div class="presence"><span class="ava">山</span><span class="ava" style="background:#7b54d6;box-shadow:0 0 0 1px #7b54d6">佐</span> 編集中</div>
@@ -131,7 +133,7 @@
 
   <section class="col">
     <h2>配車フィールド（現場カード）</h2>
-    <div class="proto-note">操作: <b>タップ＝メニュー</b>（移す/戻す/削除/選択）。<b>選択中は人をタップで即追加</b>→ヘッダの「現場へ移す」でまとめて移動。<b>ドラッグ＝移動</b>。データは自動保存。</div>
+    <div class="proto-note"><b>かんたん操作</b>＝タップでメニュー。<b>サクサク操作</b>＝タップで即選択（ヘッダで切替）。<b>ドラッグ＝移動</b>（下端で自動スクロール）。データは自動保存。</div>
     <div class="board" id="board"></div>
     <button class="add" id="addSite">＋ 現場カードを追加</button>
     <div class="hint">日付の ◀ ▶ で別の日へ。<b>前日コピー</b>で前日の配車を丸ごと複製 → 変更点だけ直せます。</div>
@@ -223,11 +225,12 @@ function buildSeedState(){
   });
   OFF.forEach(nm=>people.push({id:"p"+(++pid),name:nm+"(休)",tags:[]}));
   HOSP.forEach(nm=>people.push({id:"p"+(++pid),name:nm+"(入院)",tags:[]}));
-  return {people,vehicles,clientMaster,siteMaster,days:{[SEED_DATE]:{sites,asg}},currentDate:SEED_DATE};
+  return {people,vehicles,clientMaster,siteMaster,days:{[SEED_DATE]:{sites,asg}},currentDate:SEED_DATE,mode:"easy"};
 }
 
 function loadState(){try{const r=localStorage.getItem(KEY);if(!r)return null;const s=JSON.parse(r);if(!s||!s.days||!s.people)return null;return s;}catch(e){return null;}}
 let state=loadState()||buildSeedState();
+if(!state.mode)state.mode="easy";
 let currentDate=state.currentDate||SEED_DATE;
 let people,vehicles,clientMaster,siteMaster,sites,asg;
 function ensureDay(d){if(!state.days[d])state.days[d]={sites:[],asg:{}};}
@@ -249,7 +252,8 @@ function copyPrev(){
   state.days[currentDate]=JSON.parse(JSON.stringify({sites:pd.sites,asg:pd.asg}));
   selected.clear();bindDay();render();
 }
-function resetAll(){if(!confirm("すべての配車データを初期状態（6/5サンプル）に戻しますか？"))return;state=buildSeedState();currentDate=SEED_DATE;selected.clear();closeMenu();bindDay();render();}
+function resetAll(){if(!confirm("すべての配車データを初期状態（6/5サンプル）に戻しますか？"))return;const mode=state.mode;state=buildSeedState();state.mode=mode;currentDate=SEED_DATE;selected.clear();closeMenu();bindDay();render();}
+function toggleMode(){state.mode=state.mode==="pro"?"easy":"pro";selected.clear();closeMenu();render();}
 
 const byId=(arr,id)=>arr.find(x=>x.id===id);
 const $=id=>document.getElementById(id);
@@ -275,6 +279,7 @@ function chipVehicle(v,{inPool=false,siteId=null}={}){
 
 function render(){
   $("dateLbl").textContent=dispDate(currentDate);
+  $("modeBtn").textContent = state.mode==="pro"?"サクサク操作":"かんたん操作";
   $("legend").innerHTML = Object.entries(TAGS).map(([k,t])=>
     `<span class="chip tag ${filterTag&&filterTag!==k?'off':''}" data-border="${t.border}" data-tag="${k}">${t.svg?`<span class="bdg" style="color:${t.color}">${t.svg}</span>`:''}${t.label}</span>`).join("");
   $("pool").innerHTML = people.map(p=>chipPerson(p,{inPool:true})).join("");
@@ -315,11 +320,20 @@ function snapBack(el){el.style.transition="transform .16s ease, opacity .16s eas
 function slideOut(el,dir,done){let f=false;const fin=function(){if(f)return;f=true;done();};el.style.transition="transform .18s ease, opacity .18s ease";el.style.transform="translateX("+(dir*520)+"px)";el.style.opacity="0";el.addEventListener("transitionend",fin,{once:true});setTimeout(fin,260);}
 
 let drag=null;
-const LONGPRESS=180, FLICK_DX=70, CARD_FLICK_DX=90;
+const LONGPRESS=180, FLICK_DX=70, CARD_FLICK_DX=90, EDGE=90;
 function findDropTarget(x,y){let el=document.elementFromPoint(x,y);while(el&&!el.dataset?.drop)el=el.parentElement;return el?el.dataset.drop:null;}
 function clearHi(){document.querySelectorAll(".drop-hi").forEach(e=>e.classList.remove("drop-hi"));}
+function highlightAt(x,y){clearHi();const t=findDropTarget(x,y);if(t){const n=document.querySelector('[data-drop="'+t+'"]');n&&n.classList.add("drop-hi");}}
 function paintFloat(){if(!drag)return;drag.raf=0;drag.float.style.transform=`translate3d(${drag.fx}px,${drag.fy}px,0) translate(-50%,-50%) scale(1.04)`;}
 function scheduleFloat(){if(drag&&!drag.raf)drag.raf=requestAnimationFrame(paintFloat);}
+function autoScrollTick(){
+  if(!drag){return;}
+  const y=drag.fy,h=window.innerHeight;let v=0;
+  if(y<EDGE)v=-Math.ceil((EDGE-y)/EDGE*18);
+  else if(y>h-EDGE)v=Math.ceil((y-(h-EDGE))/EDGE*18);
+  if(v){window.scrollBy(0,v);highlightAt(drag.fx,drag.fy);}
+  drag.scrollRaf=requestAnimationFrame(autoScrollTick);
+}
 
 document.addEventListener("pointerdown",e=>{
   if(!$("menu").classList.contains("hidden")&&!(e.target.closest&&e.target.closest("#menu"))&&!(e.target.closest&&e.target.closest(".selinfo")))closeMenu();
@@ -343,10 +357,11 @@ function startChip(e,chip){
     const f=chip.cloneNode(true);f.classList.add("floating");f.classList.remove("placed","dim","sel");f.style.transform="";f.style.opacity="";
     if(group)f.innerHTML+=`<span class="gcount">${ids.length}</span>`;
     document.body.appendChild(f);chip.classList.add("dragging");
-    drag={type,id,ids,group,from,float:f,fx:startX,fy:startY,raf:0};paintFloat();
+    drag={type,id,ids,group,from,float:f,fx:startX,fy:startY,raf:0,scrollRaf:0};paintFloat();
+    drag.scrollRaf=requestAnimationFrame(autoScrollTick);
   }
   function onMove(ev){
-    if(started){ev.preventDefault();drag.fx=ev.clientX;drag.fy=ev.clientY;scheduleFloat();clearHi();const t=findDropTarget(ev.clientX,ev.clientY);if(t){const n=document.querySelector('[data-drop="'+t+'"]');n&&n.classList.add("drop-hi");}return;}
+    if(started){ev.preventDefault();drag.fx=ev.clientX;drag.fy=ev.clientY;scheduleFloat();highlightAt(ev.clientX,ev.clientY);return;}
     const dx=ev.clientX-startX,dy=ev.clientY-startY;
     if(swiping){ev.preventDefault();setSwipe(chip,dx);return;}
     if(!decided&&Math.hypot(dx,dy)>10){decided=true;clearTimeout(timer);if(Math.abs(dx)>Math.abs(dy)+4){swiping=true;ev.preventDefault();setSwipe(chip,dx);}}
@@ -357,14 +372,15 @@ function startChip(e,chip){
     const dx=ev.clientX-startX,dy=ev.clientY-startY;
     if(started){
       if(drag.raf)cancelAnimationFrame(drag.raf);
+      if(drag.scrollRaf)cancelAnimationFrame(drag.scrollRaf);
       const target=findDropTarget(ev.clientX,ev.clientY);
       drag.float.remove();chip.classList.remove("dragging");clearHi();
       if(target)applyDrop(drag,target);drag=null;return;
     }
     if(swiping){ if(Math.abs(dx)>FLICK_DX)commitChipFlick(Math.sign(dx)); else snapBack(chip); return; }
     if(Math.hypot(dx,dy)<10){
-      // 選択中に人をタップ＝即トグル（メニューを出さない・上級者向け）
-      if(type==="person"&&selected.size>0){ selected.has(id)?selected.delete(id):selected.add(id); render(); return; }
+      // タップ：サクサク＝即選択 / かんたん＝選択中のみ即選択・それ以外メニュー
+      if(type==="person"&&(state.mode==="pro"||selected.size>0)){ selected.has(id)?selected.delete(id):selected.add(id); render(); return; }
       const r=chip.getBoundingClientRect(); openMenu(type,id,from,r.left,r.bottom);
     }
   }
@@ -401,7 +417,7 @@ function startCard(e,card){
   document.addEventListener("pointerup",onUp);
 }
 
-// ---- タップメニュー（提案A）----
+// ---- タップメニュー（かんたん操作）----
 let menuCtx=null;
 function closeMenu(){$("menu").classList.add("hidden");$("menu").innerHTML="";menuCtx=null;}
 function openMenu(type,id,from,x,y){
@@ -507,6 +523,7 @@ $("siteOk").addEventListener("click",()=>{
 
 $("prevDay").addEventListener("click",()=>shiftDate(-1));
 $("nextDay").addEventListener("click",()=>shiftDate(1));
+$("modeBtn").addEventListener("click",toggleMode);
 $("copyPrev").addEventListener("click",copyPrev);
 $("resetAll").addEventListener("click",resetAll);
 $("legend").addEventListener("click",e=>{const t=e.target.closest("[data-tag]");if(!t)return;filterTag=filterTag===t.dataset.tag?null:t.dataset.tag;render();});
