@@ -15,18 +15,19 @@
   html,body{margin:0;height:100%}
   body{
     font-family:-apple-system,"Hiragino Kaku Gothic ProN","Noto Sans JP",sans-serif;background:var(--bg);color:var(--ink);
-    -webkit-tap-highlight-color:transparent;
-    -webkit-user-select:none;-ms-user-select:none;user-select:none;-webkit-touch-callout:none;
+    -webkit-tap-highlight-color:transparent;-webkit-user-select:none;-ms-user-select:none;user-select:none;-webkit-touch-callout:none;
   }
   input{-webkit-user-select:text;user-select:text}
   svg{width:14px;height:14px;vertical-align:-2px;display:inline-block}
   header{background:var(--panel);border-bottom:1px solid var(--line);padding:8px 12px;position:sticky;top:0;z-index:20}
-  .htop{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .htop{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
   .htop h1{font-size:15px;margin:0;font-weight:700}
-  .date{font-weight:700;color:var(--blue)}
+  .navbtn{border:none;background:none;font-size:18px;color:var(--blue);cursor:pointer;padding:0 4px;line-height:1}
+  .date{font-weight:700;color:var(--blue);min-width:74px;text-align:center}
   .total{font-size:12px;color:var(--sub)}
   .selinfo{font-size:12px;color:var(--blue);font-weight:700}
   .selinfo a{cursor:pointer;text-decoration:underline;margin-left:6px}
+  .toolbtn{padding:5px 10px;border:1px solid var(--line);background:#fff;border-radius:8px;font-size:12px;cursor:pointer}
   .presence{margin-left:auto;display:flex;gap:4px;align-items:center;font-size:12px;color:var(--sub)}
   .ava{width:22px;height:22px;border-radius:50%;background:var(--green);color:#fff;display:grid;place-items:center;font-size:11px;border:2px solid #fff;box-shadow:0 0 0 1px var(--green)}
   .alertbar{margin-top:6px;font-size:13px;display:flex;gap:12px;flex-wrap:wrap;color:var(--sub)}
@@ -67,13 +68,13 @@
   .slots{padding:8px;display:flex;flex-wrap:wrap;gap:6px;min-height:40px}
   .warn{margin:0 9px 8px;font-size:11px;color:var(--red);font-weight:700}
   .empty-slot{font-size:11px;color:var(--red);align-self:center}
+  .empty-day{padding:24px;text-align:center;color:var(--sub);font-size:13px}
   .pool.drop-hi,.vpool.drop-hi{outline:2px dashed var(--blue);outline-offset:-4px}
 
   button.add{margin:8px;padding:8px 10px;border:1px dashed #9aa5b1;background:#fff;border-radius:8px;color:var(--sub);font-size:13px;cursor:pointer;width:calc(100% - 16px)}
   .hint{padding:0 12px 14px;color:var(--sub);font-size:11px;line-height:1.5}
   .proto-note{margin:0 10px 12px;padding:8px 10px;background:#fffbe6;border:1px solid #f0e0a0;border-radius:8px;font-size:11px;color:#7a6a1f}
 
-  /* 追加モーダル */
   .modal{position:fixed;inset:0;background:rgba(0,0,0,.4);display:flex;align-items:flex-end;justify-content:center;z-index:100}
   .modal.hidden{display:none}
   .sheet{background:#fff;width:100%;max-width:460px;border-radius:14px 14px 0 0;padding:16px;max-height:88vh;overflow:auto}
@@ -99,10 +100,13 @@
 <header>
   <div class="htop">
     <h1>らくらく手配</h1>
-    <span class="date">◀ 6/5(木) ▶</span>
+    <button class="navbtn" id="prevDay">◀</button>
+    <span class="date" id="dateLbl">—</span>
+    <button class="navbtn" id="nextDay">▶</button>
     <span class="total" id="total"></span>
     <span class="selinfo" id="selinfo"></span>
-    <button class="add" style="width:auto;margin:0;padding:5px 10px" id="copyPrev">前日コピー</button>
+    <button class="toolbtn" id="copyPrev">前日コピー</button>
+    <button class="toolbtn" id="resetAll">初期化</button>
     <div class="presence"><span class="ava">山</span><span class="ava" style="background:#7b54d6;box-shadow:0 0 0 1px #7b54d6">佐</span> 編集中</div>
   </div>
   <div class="alertbar" id="alertbar"></div>
@@ -118,10 +122,10 @@
 
   <section class="col">
     <h2>配車フィールド（現場カード）</h2>
-    <div class="proto-note">操作: <b>タップ＝選択</b> / <b>長押し＋ドラッグ＝移動</b>（選択中はまとめて）/ <b>左右フリック</b>。データは保存されません。</div>
+    <div class="proto-note">操作: <b>タップ＝選択</b> / <b>長押し＋ドラッグ＝移動</b> / <b>左右フリック</b>。データは<b>この端末に自動保存</b>されます（「初期化」でサンプルに戻る）。</div>
     <div class="board" id="board"></div>
     <button class="add" id="addSite">＋ 現場カードを追加</button>
-    <div class="hint">フリックの意味は場所で変わります：<b>現場内の人/車をフリック＝人員プールへ戻す</b>（確認なし）／<b>人員プールでフリック＝削除</b>（確認）／<b>現場カードをフリック＝現場削除</b>（確認）。</div>
+    <div class="hint">日付の ◀ ▶ で別の日へ。<b>前日コピー</b>で前日の配車を丸ごと複製 → 変更点だけ直せます。</div>
   </section>
 
   <section class="col">
@@ -131,7 +135,6 @@
   </section>
 </main>
 
-<!-- 現場追加モーダル -->
 <div class="modal hidden" id="siteModal">
   <div class="sheet">
     <h3>現場を追加</h3>
@@ -148,7 +151,6 @@
 </div>
 
 <script>
-// ---- アイコン（Lucide系 / インラインSVG）----
 const SVG = {
   truck:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 18V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v11a1 1 0 0 0 1 1h2"/><path d="M15 18H9"/><path d="M19 18h2a1 1 0 0 0 1-1v-3.65a1 1 0 0 0-.22-.62l-3.48-4.35A1 1 0 0 0 17.52 8H14"/><circle cx="7" cy="18" r="2"/><circle cx="17" cy="18" r="2"/></svg>`,
   car:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2"/><circle cx="7" cy="17" r="2"/><path d="M9 17h6"/><circle cx="17" cy="17" r="2"/></svg>`,
@@ -161,8 +163,6 @@ const TAGS = {
   leader:{label:"リーダー",svg:SVG.star,border:"blue",color:"var(--blue)"},
   helper:{label:"応援",svg:SVG.helper,border:"orange",color:"var(--orange)"},
 };
-
-// ---- 配車表(6/5)シード ＋ 読み（ふりがな・サジェスト用）----
 const READING={
  "大崎建設":"おおさきけんせつ","高城総業":"たかぎそうぎょう","大和栄建":"だいわえいけん","クラレ":"くられ",
  "高鋼工業":"こうこうこうぎょう","カマブ":"かまぶ","松振組":"まつふりぐみ","旺城資材":"おうじょうしざい",
@@ -196,25 +196,51 @@ const SEED = [
 ];
 const OFF=["亀之國","石田","平田","柳原","伊達","橋本","杉山","松岡"];
 const HOSP=["中川"];
+const SEED_DATE="2026-06-05", KEY="rakuraku_state_v1";
 
-let people=[], vehicles=[], sites=[], asg={};
-const clientMaster=[], siteMaster=[]; // {name, reading}
-(function build(){
-  let pid=0, vid=0; const vmap={}, cset=new Set(), sset=new Set();
+function buildSeedState(){
+  const people=[],vehicles=[],clientMaster=[],siteMaster=[],sites=[],asg={};
+  let pid=0,vid=0;const vmap={},cset=new Set(),sset=new Set();
   SEED.forEach((s,i)=>{
     const sid="s"+(i+1);
     sites.push({id:sid,client:s.c,name:s.n,time:s.t,content:s.w,need:s.m.length,needVehicle:!!s.v,note:s.note,send:s.send});
     asg[sid]={members:[],vehicles:[]};
-    s.m.forEach(([nm,tg])=>{const id="p"+(++pid);people.push({id,name:nm,tags: tg===1?["driver"]:tg===2?["helper"]:[]});asg[sid].members.push(id);});
+    s.m.forEach(([nm,tg])=>{const id="p"+(++pid);people.push({id,name:nm,tags:tg===1?["driver"]:tg===2?["helper"]:[]});asg[sid].members.push(id);});
     if(s.v){if(!vmap[s.v]){vmap[s.v]={id:"v"+(++vid),name:s.v};vehicles.push(vmap[s.v]);}asg[sid].vehicles.push(vmap[s.v].id);}
     if(!cset.has(s.c)){cset.add(s.c);clientMaster.push({name:s.c,reading:READING[s.c]||""});}
     if(s.n&&!sset.has(s.n)){sset.add(s.n);siteMaster.push({name:s.n,reading:READING[s.n]||""});}
   });
   OFF.forEach(nm=>people.push({id:"p"+(++pid),name:nm+"(休)",tags:[]}));
   HOSP.forEach(nm=>people.push({id:"p"+(++pid),name:nm+"(入院)",tags:[]}));
-})();
-let filterTag = null;
-const selected = new Set();
+  return {people,vehicles,clientMaster,siteMaster,days:{[SEED_DATE]:{sites,asg}},currentDate:SEED_DATE};
+}
+
+// ---- 状態・保存 ----
+function loadState(){try{const r=localStorage.getItem(KEY);if(!r)return null;const s=JSON.parse(r);if(!s||!s.days||!s.people)return null;return s;}catch(e){return null;}}
+let state=loadState()||buildSeedState();
+let currentDate=state.currentDate||SEED_DATE;
+let people,vehicles,clientMaster,siteMaster,sites,asg;
+function ensureDay(d){if(!state.days[d])state.days[d]={sites:[],asg:{}};}
+function bindDay(){ensureDay(currentDate);people=state.people;vehicles=state.vehicles;clientMaster=state.clientMaster;siteMaster=state.siteMaster;sites=state.days[currentDate].sites;asg=state.days[currentDate].asg;}
+function save(){state.currentDate=currentDate;try{localStorage.setItem(KEY,JSON.stringify(state));}catch(e){}}
+bindDay();
+
+let filterTag=null;const selected=new Set();
+
+// ---- 日付 ----
+const WD=["日","月","火","水","木","金","土"];
+function fmt(dt){return dt.getFullYear()+"-"+String(dt.getMonth()+1).padStart(2,"0")+"-"+String(dt.getDate()).padStart(2,"0");}
+function dispDate(s){const dt=new Date(s+"T00:00:00");return (dt.getMonth()+1)+"/"+dt.getDate()+"("+WD[dt.getDay()]+")";}
+function shiftDate(delta){const dt=new Date(currentDate+"T00:00:00");dt.setDate(dt.getDate()+delta);currentDate=fmt(dt);selected.clear();bindDay();render();}
+function copyPrev(){
+  const dt=new Date(currentDate+"T00:00:00");dt.setDate(dt.getDate()-1);const prev=fmt(dt);
+  const pd=state.days[prev];
+  if(!pd||!pd.sites.length){alert("前日（"+dispDate(prev)+"）の配車データがありません。");return;}
+  if(sites.length&&!confirm(dispDate(currentDate)+"の配車を、前日（"+dispDate(prev)+"）の内容で置き換えますか？"))return;
+  state.days[currentDate]=JSON.parse(JSON.stringify({sites:pd.sites,asg:pd.asg}));
+  selected.clear();bindDay();render();
+}
+function resetAll(){if(!confirm("すべての配車データを初期状態（6/5サンプル）に戻しますか？"))return;state=buildSeedState();currentDate=SEED_DATE;selected.clear();bindDay();render();}
 
 // ---- ヘルパ ----
 const byId=(arr,id)=>arr.find(x=>x.id===id);
@@ -227,6 +253,7 @@ function badges(p){return p.tags.map(t=>TAGS[t].svg?`<span class="bdg" style="co
 
 // ---- 描画 ----
 function chipPerson(p,{inPool=false,siteId=null}={}){
+  if(!p)return "";
   const placed=personSites(p.id).length>0, dup=personSites(p.id).length>1;
   const dimByFilter=filterTag&&!p.tags.includes(filterTag);
   const cls=["chip"];if(inPool&&placed)cls.push("placed");if(dimByFilter)cls.push("dim");if(selected.has(p.id))cls.push("sel");
@@ -234,30 +261,32 @@ function chipPerson(p,{inPool=false,siteId=null}={}){
   return `<span class="${cls.join(' ')}" data-border="${repBorder(p)}" data-type="person" data-id="${p.id}" data-from="${inPool?'pool':siteId}">${p.name}${badges(p)}${dupMark}</span>`;
 }
 function chipVehicle(v,{inPool=false,siteId=null}={}){
+  if(!v)return "";
   const placed=vehicleSites(v.id).length>0;const cls=["chip","veh"];if(inPool&&placed)cls.push("placed");
   return `<span class="${cls.join(' ')}" data-type="vehicle" data-id="${v.id}" data-from="${inPool?'vpool':siteId}"><span class="bdg">${SVG.truck}</span>${v.name}</span>`;
 }
 
 function render(){
+  $("dateLbl").textContent=dispDate(currentDate);
   $("legend").innerHTML = Object.entries(TAGS).map(([k,t])=>
     `<span class="chip tag ${filterTag&&filterTag!==k?'off':''}" data-border="${t.border}" data-tag="${k}">${t.svg?`<span class="bdg" style="color:${t.color}">${t.svg}</span>`:''}${t.label}</span>`).join("");
   $("pool").innerHTML = people.map(p=>chipPerson(p,{inPool:true})).join("");
   $("vpool").innerHTML = vehicles.map(v=>chipVehicle(v,{inPool:true})).join("");
-  $("board").innerHTML = sites.map(s=>{
+  $("board").innerHTML = sites.length? sites.map(s=>{
     const a=asg[s.id]||{members:[],vehicles:[]};
     const short=a.members.length<s.need;
     const memberChips=a.members.map(pid=>chipPerson(byId(people,pid),{siteId:s.id})).join("");
     const vehChips=a.vehicles.map(vid=>chipVehicle(byId(vehicles,vid),{siteId:s.id})).join("");
     const emptySlots=short?`<span class="empty-slot">＋空き${s.need-a.members.length}（欠員！）</span>`:"";
     const warns=[];if(a.vehicles.length>0&&!siteHasDriver(s.id))warns.push("⚠ 車両ありなのに運転手なし");
-    const meta=`集合 ${s.time||"-"} ・${s.content}${s.send?" ・送り":""}${s.note?" ・"+s.note:""}`;
+    const meta=`集合 ${s.time||"-"} ・${s.content||"-"}${s.send?" ・送り":""}${s.note?" ・"+s.note:""}`;
     return `<div class="card" data-drop="${s.id}">
       <h3><span class="title">${s.client}${s.name?" / "+s.name:""}</span>${vehChips}<span class="count ${short?'short':''}">${a.members.length}/${s.need}${short?'':' ✓'}</span></h3>
       <div class="meta">${meta}</div>
       <div class="slots">${memberChips}${emptySlots}</div>
       ${warns.map(w=>`<div class="warn">${w}</div>`).join("")}
     </div>`;
-  }).join("");
+  }).join("") : `<div class="empty-day">この日の配車はまだありません。<br>「前日コピー」または「＋現場カードを追加」で作成できます。</div>`;
   let lack=0,dup=new Set(),nodrv=0,assigned=0;
   sites.forEach(s=>{const a=asg[s.id];assigned+=a.members.length;if(a.members.length<s.need)lack++;if(a.vehicles.length>0&&!siteHasDriver(s.id))nodrv++;});
   people.forEach(p=>{if(personSites(p.id).length>1)dup.add(p.id);});
@@ -268,18 +297,16 @@ function render(){
   $("alertbar").innerHTML="アラート ▸ "+parts.join(" / ");
   $("total").textContent=`配置 ${assigned}名 / ${sites.length}現場`;
   $("selinfo").innerHTML = selected.size? `${selected.size}名選択中<a id="clearsel">解除</a>` : "";
+  save();
 }
 
-// ---- 範囲選択/コピーの抑止 ----
 document.addEventListener("selectstart",e=>{if(drag||(e.target.closest&&e.target.closest(".chip")))e.preventDefault();});
 document.addEventListener("contextmenu",e=>{if(e.target.closest&&e.target.closest(".chip"))e.preventDefault();});
 
-// ---- スワイプ視覚 ----
 function setSwipe(el,dx){el.style.transition="none";el.style.transform="translateX("+dx+"px)";el.style.opacity=String(Math.max(.25,1-Math.abs(dx)/320));}
 function snapBack(el){el.style.transition="transform .16s ease, opacity .16s ease";el.style.transform="";el.style.opacity="";}
 function slideOut(el,dir,done){let f=false;const fin=function(){if(f)return;f=true;done();};el.style.transition="transform .18s ease, opacity .18s ease";el.style.transform="translateX("+(dir*520)+"px)";el.style.opacity="0";el.addEventListener("transitionend",fin,{once:true});setTimeout(fin,260);}
 
-// ---- ドラッグ＆フリック ----
 let drag=null;
 const LONGPRESS=180, FLICK_DX=70, CARD_FLICK_DX=90;
 function findDropTarget(x,y){let el=document.elementFromPoint(x,y);while(el&&!el.dataset?.drop)el=el.parentElement;return el?el.dataset.drop:null;}
@@ -288,7 +315,7 @@ function paintFloat(){if(!drag)return;drag.raf=0;drag.float.style.transform=`tra
 function scheduleFloat(){if(drag&&!drag.raf)drag.raf=requestAnimationFrame(paintFloat);}
 
 document.addEventListener("pointerdown",e=>{
-  if(e.target.closest&&e.target.closest(".modal"))return; // モーダル内は通常操作
+  if(e.target.closest&&e.target.closest(".modal"))return;
   const chip=e.target.closest(".chip[data-type]");
   if(chip&&!chip.classList.contains("tag"))return startChip(e,chip);
   const card=e.target.closest(".card[data-drop]");
@@ -314,10 +341,7 @@ function startChip(e,chip){
     if(started){ev.preventDefault();drag.fx=ev.clientX;drag.fy=ev.clientY;scheduleFloat();clearHi();const t=findDropTarget(ev.clientX,ev.clientY);if(t){const n=document.querySelector('[data-drop="'+t+'"]');n&&n.classList.add("drop-hi");}return;}
     const dx=ev.clientX-startX,dy=ev.clientY-startY;
     if(swiping){ev.preventDefault();setSwipe(chip,dx);return;}
-    if(!decided&&Math.hypot(dx,dy)>10){
-      decided=true;clearTimeout(timer);
-      if(Math.abs(dx)>Math.abs(dy)+4){swiping=true;ev.preventDefault();setSwipe(chip,dx);}
-    }
+    if(!decided&&Math.hypot(dx,dy)>10){decided=true;clearTimeout(timer);if(Math.abs(dx)>Math.abs(dy)+4){swiping=true;ev.preventDefault();setSwipe(chip,dx);}}
   }
   function onUp(ev){
     clearTimeout(timer);
@@ -357,7 +381,7 @@ function startCard(e,card){
     const dx=ev.clientX-startX;
     if(Math.abs(dx)>CARD_FLICK_DX){
       const s=byId(sites,sid);
-      if(s&&confirm("現場「"+s.client+(s.name?" / "+s.name:"")+"」を削除しますか？")) slideOut(card,Math.sign(dx),()=>{sites=sites.filter(x=>x.id!==sid);delete asg[sid];render();});
+      if(s&&confirm("現場「"+s.client+(s.name?" / "+s.name:"")+"」を削除しますか？")) slideOut(card,Math.sign(dx),()=>{const i=sites.findIndex(x=>x.id===sid);if(i>=0)sites.splice(i,1);delete asg[sid];render();});
       else snapBack(card);
     } else snapBack(card);
   }
@@ -366,8 +390,8 @@ function startCard(e,card){
 }
 
 function deleteRecord(type,id){
-  if(type==="person"){people=people.filter(x=>x.id!==id);sites.forEach(s=>pull(s.id,"person",id));selected.delete(id);}
-  else{vehicles=vehicles.filter(x=>x.id!==id);sites.forEach(s=>pull(s.id,"vehicle",id));}
+  if(type==="person"){const i=people.findIndex(x=>x.id===id);if(i>=0)people.splice(i,1);Object.values(state.days).forEach(d=>Object.values(d.asg).forEach(a=>{a.members=a.members.filter(x=>x!==id);}));selected.delete(id);}
+  else{const i=vehicles.findIndex(x=>x.id===id);if(i>=0)vehicles.splice(i,1);Object.values(state.days).forEach(d=>Object.values(d.asg).forEach(a=>{a.vehicles=a.vehicles.filter(x=>x!==id);}));}
 }
 function pull(sid,type,id){if(!asg[sid])return;if(type==="person")asg[sid].members=asg[sid].members.filter(x=>x!==id);else asg[sid].vehicles=asg[sid].vehicles.filter(x=>x!==id);}
 function push(sid,type,id){if(type==="person"){if(!asg[sid].members.includes(id))asg[sid].members.push(id);}else{if(!asg[sid].vehicles.includes(id))asg[sid].vehicles.push(id);}}
@@ -383,7 +407,7 @@ function applyDrop(d,target){
   render();
 }
 
-// ---- 現場追加モーダル（サジェスト＋ふりがな自動登録＋人数ステッパー）----
+// ---- 現場追加モーダル ----
 let needVal=3, capClient="", capSite="";
 const normq=x=>(x||"").toLowerCase().trim();
 function matchList(list,q){q=normq(q);if(!q)return list.slice(0,8);return list.filter(e=>normq(e.name).includes(q)||normq(e.reading).includes(q)).slice(0,8);}
@@ -398,7 +422,6 @@ function renderSug(which){
 }
 function openSiteModal(){needVal=3;capClient="";capSite="";$("needVal").textContent="3";$("fClient").value="";$("fSite").value="";renderSug("client");renderSug("site");$("siteModal").classList.remove("hidden");setTimeout(()=>$("fClient").focus(),50);}
 function closeSiteModal(){$("siteModal").classList.add("hidden");}
-
 $("fClient").addEventListener("compositionupdate",e=>{if(e.data)capClient=e.data;});
 $("fSite").addEventListener("compositionupdate",e=>{if(e.data)capSite=e.data;});
 $("fClient").addEventListener("input",()=>renderSug("client"));
@@ -412,20 +435,23 @@ $("siteModal").addEventListener("click",e=>{if(e.target.id==="siteModal")closeSi
 $("siteOk").addEventListener("click",()=>{
   const client=$("fClient").value.trim(); if(!client){alert("取引先を入力してください");return;}
   const sname=$("fSite").value.trim();
-  if(!clientMaster.some(e=>e.name===client))clientMaster.push({name:client,reading:capClient||""}); // ふりがな自動登録
+  if(!clientMaster.some(e=>e.name===client))clientMaster.push({name:client,reading:capClient||""});
   if(sname&&!siteMaster.some(e=>e.name===sname))siteMaster.push({name:sname,reading:capSite||""});
   const id="s"+Date.now();
   sites.push({id,client,name:sname,content:"",time:"",need:needVal,needVehicle:false});asg[id]={members:[],vehicles:[]};
   closeSiteModal();render();
 });
 
-// ---- フィルタ / 選択解除 / 追加 ----
+// ---- イベント ----
+$("prevDay").addEventListener("click",()=>shiftDate(-1));
+$("nextDay").addEventListener("click",()=>shiftDate(1));
+$("copyPrev").addEventListener("click",copyPrev);
+$("resetAll").addEventListener("click",resetAll);
 $("legend").addEventListener("click",e=>{const t=e.target.closest("[data-tag]");if(!t)return;filterTag=filterTag===t.dataset.tag?null:t.dataset.tag;render();});
 $("selinfo").addEventListener("click",e=>{if(e.target.id==="clearsel"){selected.clear();render();}});
 $("addPerson").addEventListener("click",()=>{const name=prompt("人員の名前は？","");if(!name)return;const driver=confirm("運転可能ですか？（OK=可 / キャンセル=不可）");people.push({id:"p"+Date.now(),name,tags:driver?["driver"]:[]});render();});
 $("addSite").addEventListener("click",openSiteModal);
 $("addVeh").addEventListener("click",()=>{const name=prompt("車両名は？（名前だけでOK）","");if(!name)return;vehicles.push({id:"v"+Date.now(),name});render();});
-$("copyPrev").addEventListener("click",()=>{alert("（プロトタイプ）前日の配車をコピーする想定の機能です。");});
 
 render();
 </script>
