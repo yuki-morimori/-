@@ -55,7 +55,7 @@
   .gcount{background:var(--blue);color:#fff;border-radius:999px;padding:1px 6px;margin-left:4px;font-size:11px}
 
   .board{padding:10px;display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:10px}
-  .card{border:1px solid var(--line);border-radius:10px;overflow:hidden;background:#fff;touch-action:pan-y} /* 縦スクロールは許可・横フリックは捕捉 */
+  .card{border:1px solid var(--line);border-radius:10px;overflow:hidden;background:#fff;touch-action:pan-y}
   .card.drop-hi{outline:2px dashed var(--blue);outline-offset:-2px}
   .card h3{margin:0;padding:7px 9px;font-size:13px;background:#f0f3f7;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:6px;flex-wrap:wrap}
   .card h3 .title{font-weight:700}
@@ -96,10 +96,10 @@
 
   <section class="col">
     <h2>配車フィールド（現場カード）</h2>
-    <div class="proto-note">操作: <b>タップ＝選択</b> / <b>長押し＋ドラッグ＝移動</b>（選択中はまとめて移動）/ <b>左右フリック＝削除</b>（確認あり）。データは保存されません。</div>
+    <div class="proto-note">操作: <b>タップ＝選択</b> / <b>長押し＋ドラッグ＝移動</b>（選択中はまとめて）/ <b>左右フリック</b>。データは保存されません。</div>
     <div class="board" id="board"></div>
     <button class="add" id="addSite">＋ 現場カードを追加</button>
-    <div class="hint">現場カードを左右にフリックすると現場を削除（確認ポップアップ）。人員・車両チップを左右フリックでその対象を削除します。</div>
+    <div class="hint">フリックの意味は場所で変わります：<b>現場内の人/車をフリック＝人員プールへ戻す</b>（確認なし）／<b>人員プールでフリック＝削除</b>（確認）／<b>現場カードをフリック＝現場削除</b>（確認）。</div>
   </section>
 
   <section class="col">
@@ -117,7 +117,6 @@ const SVG = {
   star:`<svg viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>`,
   helper:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" x2="19" y1="8" y2="14"/><line x1="22" x2="16" y1="11" y2="11"/></svg>`,
 };
-
 const TAGS = {
   driver:{label:"運転可",svg:SVG.car,border:"blue",color:"var(--blue)"},
   newbie:{label:"新人",svg:"",border:"yellow",color:"var(--yellow)"},
@@ -225,9 +224,14 @@ function render(){
 document.addEventListener("selectstart",e=>{if(drag||e.target.closest(".chip"))e.preventDefault();});
 document.addEventListener("contextmenu",e=>{if(e.target.closest(".chip"))e.preventDefault();});
 
+// ---- 共通：スワイプ視覚 ----
+function setSwipe(el,dx){el.style.transition="none";el.style.transform="translateX("+dx+"px)";el.style.opacity=String(Math.max(.25,1-Math.abs(dx)/320));}
+function snapBack(el){el.style.transition="transform .16s ease, opacity .16s ease";el.style.transform="";el.style.opacity="";}
+function slideOut(el,dir,done){let f=false;const fin=function(){if(f)return;f=true;done();};el.style.transition="transform .18s ease, opacity .18s ease";el.style.transform="translateX("+(dir*520)+"px)";el.style.opacity="0";el.addEventListener("transitionend",fin,{once:true});setTimeout(fin,260);}
+
 // ---- ドラッグ＆フリック ----
 let drag=null;
-const LONGPRESS=180, FLICK_DX=50, FLICK_MS=500;
+const LONGPRESS=180, FLICK_DX=70, CARD_FLICK_DX=90;
 function findDropTarget(x,y){let el=document.elementFromPoint(x,y);while(el&&!el.dataset?.drop)el=el.parentElement;return el?el.dataset.drop:null;}
 function clearHi(){document.querySelectorAll(".drop-hi").forEach(e=>e.classList.remove("drop-hi"));}
 function paintFloat(){if(!drag)return;drag.raf=0;drag.float.style.transform=`translate3d(${drag.fx}px,${drag.fy}px,0) translate(-50%,-50%) scale(1.04)`;}
@@ -237,66 +241,86 @@ document.addEventListener("pointerdown",e=>{
   const chip=e.target.closest(".chip[data-type]");
   if(chip&&!chip.classList.contains("tag"))return startChip(e,chip);
   const card=e.target.closest(".card[data-drop]");
-  if(card)return startCardFlick(e,card);
+  if(card)return startCard(e,card);
 });
 
 function startChip(e,chip){
   e.preventDefault();
   const type=chip.dataset.type,id=chip.dataset.id,from=chip.dataset.from;
-  const startX=e.clientX,startY=e.clientY,t0=performance.now();
-  let started=false;
+  const startX=e.clientX,startY=e.clientY;
+  let started=false,swiping=false,decided=false;
   let timer=setTimeout(beginDrag,LONGPRESS);
   function beginDrag(){
     started=true;
     let ids=[id],group=false;
     if(type==="person"&&selected.has(id)&&selected.size>1){ids=[...selected];group=true;}
-    const f=chip.cloneNode(true);f.classList.add("floating");f.classList.remove("placed","dim","sel");
+    const f=chip.cloneNode(true);f.classList.add("floating");f.classList.remove("placed","dim","sel");f.style.transform="";f.style.opacity="";
     if(group)f.innerHTML+=`<span class="gcount">${ids.length}</span>`;
     document.body.appendChild(f);chip.classList.add("dragging");
     drag={type,id,ids,group,from,float:f,fx:startX,fy:startY,raf:0};paintFloat();
   }
   function onMove(ev){
-    if(!started){
-      if(Math.hypot(ev.clientX-startX,ev.clientY-startY)>12)clearTimeout(timer); // 先に動いた＝フリック候補（ドラッグにしない）
-      return;
+    if(started){ev.preventDefault();drag.fx=ev.clientX;drag.fy=ev.clientY;scheduleFloat();clearHi();const t=findDropTarget(ev.clientX,ev.clientY);if(t){const n=document.querySelector('[data-drop="'+t+'"]');n&&n.classList.add("drop-hi");}return;}
+    const dx=ev.clientX-startX,dy=ev.clientY-startY;
+    if(swiping){ev.preventDefault();setSwipe(chip,dx);return;}
+    if(!decided&&Math.hypot(dx,dy)>10){
+      decided=true;clearTimeout(timer);               // 動きが先＝ドラッグにしない
+      if(Math.abs(dx)>Math.abs(dy)+4){swiping=true;ev.preventDefault();setSwipe(chip,dx);} // 横＝スワイプ開始
     }
-    ev.preventDefault();drag.fx=ev.clientX;drag.fy=ev.clientY;scheduleFloat();
-    clearHi();const t=findDropTarget(ev.clientX,ev.clientY);if(t){const n=document.querySelector(`[data-drop="${t}"]`);n&&n.classList.add("drop-hi");}
   }
   function onUp(ev){
     clearTimeout(timer);
     document.removeEventListener("pointermove",onMove);document.removeEventListener("pointerup",onUp);
-    const dx=ev.clientX-startX,dy=ev.clientY-startY,dt=performance.now()-t0;
-    if(!started){
-      if(Math.abs(dx)>FLICK_DX&&Math.abs(dx)>Math.abs(dy)*1.5&&dt<FLICK_MS){flickDeleteItem(type,id);return;} // フリック＝削除
-      if(Math.hypot(dx,dy)<10&&type==="person"){selected.has(id)?selected.delete(id):selected.add(id);render();} // タップ＝選択
+    const dx=ev.clientX-startX,dy=ev.clientY-startY;
+    if(started){
+      if(drag.raf)cancelAnimationFrame(drag.raf);
+      const target=findDropTarget(ev.clientX,ev.clientY);
+      drag.float.remove();chip.classList.remove("dragging");clearHi();
+      if(target)applyDrop(drag,target);drag=null;return;
+    }
+    if(swiping){
+      if(Math.abs(dx)>FLICK_DX)commitChipFlick(Math.sign(dx)); else snapBack(chip);
       return;
     }
-    if(drag.raf)cancelAnimationFrame(drag.raf);
-    const target=findDropTarget(ev.clientX,ev.clientY);
-    drag.float.remove();chip.classList.remove("dragging");clearHi();
-    if(target)applyDrop(drag,target);drag=null;
+    if(Math.hypot(dx,dy)<10&&type==="person"){selected.has(id)?selected.delete(id):selected.add(id);render();}
+  }
+  function commitChipFlick(dir){
+    const inSite=(from!=="pool"&&from!=="vpool");
+    if(inSite){ slideOut(chip,dir,()=>{pull(from,type,id);render();}); return; } // 現場→プールへ戻す
+    const label=type==="person"?("「"+(byId(people,id)?.name||"")+"」"):("車両「"+(byId(vehicles,id)?.name||"")+"」");
+    if(confirm(label+"を削除しますか？")) slideOut(chip,dir,()=>{deleteRecord(type,id);render();});
+    else snapBack(chip);
   }
   document.addEventListener("pointermove",onMove,{passive:false});
   document.addEventListener("pointerup",onUp);
 }
 
-function startCardFlick(e,card){
-  const sx=e.clientX,sy=e.clientY,t0=performance.now();
-  function up(ev){
-    document.removeEventListener("pointerup",up);
-    const dx=ev.clientX-sx,dy=ev.clientY-sy,dt=performance.now()-t0;
-    if(Math.abs(dx)>60&&Math.abs(dx)>Math.abs(dy)*1.5&&dt<FLICK_MS)deleteSite(card.dataset.drop);
+function startCard(e,card){
+  const sid=card.dataset.drop, startX=e.clientX,startY=e.clientY;
+  let swiping=false,decided=false;
+  function onMove(ev){
+    const dx=ev.clientX-startX,dy=ev.clientY-startY;
+    if(swiping){ev.preventDefault();setSwipe(card,dx);return;}
+    if(!decided&&Math.hypot(dx,dy)>12){decided=true;if(Math.abs(dx)>Math.abs(dy)+6){swiping=true;ev.preventDefault();setSwipe(card,dx);}}
   }
-  document.addEventListener("pointerup",up);
+  function onUp(ev){
+    document.removeEventListener("pointermove",onMove);document.removeEventListener("pointerup",onUp);
+    if(!swiping)return;
+    const dx=ev.clientX-startX;
+    if(Math.abs(dx)>CARD_FLICK_DX){
+      const s=byId(sites,sid);
+      if(s&&confirm("現場「"+s.client+(s.name?" / "+s.name:"")+"」を削除しますか？")) slideOut(card,Math.sign(dx),()=>{sites=sites.filter(x=>x.id!==sid);delete asg[sid];render();});
+      else snapBack(card);
+    } else snapBack(card);
+  }
+  document.addEventListener("pointermove",onMove,{passive:false});
+  document.addEventListener("pointerup",onUp);
 }
 
-// ---- 削除 ----
-function flickDeleteItem(type,id){
-  if(type==="person"){const p=byId(people,id);if(!p)return;if(confirm(`「${p.name}」を削除しますか？`)){people=people.filter(x=>x.id!==id);sites.forEach(s=>pull(s.id,"person",id));selected.delete(id);render();}}
-  else{const v=byId(vehicles,id);if(!v)return;if(confirm(`車両「${v.name}」を削除しますか？`)){vehicles=vehicles.filter(x=>x.id!==id);sites.forEach(s=>pull(s.id,"vehicle",id));render();}}
+function deleteRecord(type,id){
+  if(type==="person"){people=people.filter(x=>x.id!==id);sites.forEach(s=>pull(s.id,"person",id));selected.delete(id);}
+  else{vehicles=vehicles.filter(x=>x.id!==id);sites.forEach(s=>pull(s.id,"vehicle",id));}
 }
-function deleteSite(sid){const s=byId(sites,sid);if(!s)return;if(confirm(`現場「${s.client}${s.name?" / "+s.name:""}」を削除しますか？`)){sites=sites.filter(x=>x.id!==sid);delete asg[sid];render();}}
 
 // ---- 移動 ----
 function pull(sid,type,id){if(!asg[sid])return;if(type==="person")asg[sid].members=asg[sid].members.filter(x=>x!==id);else asg[sid].vehicles=asg[sid].vehicles.filter(x=>x!==id);}
