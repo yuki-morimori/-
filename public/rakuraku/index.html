@@ -13,19 +13,26 @@
   }
   *{box-sizing:border-box}
   html,body{margin:0;height:100%}
-  body{font-family:-apple-system,"Hiragino Kaku Gothic ProN","Noto Sans JP",sans-serif;background:var(--bg);color:var(--ink);-webkit-tap-highlight-color:transparent}
+  body{
+    font-family:-apple-system,"Hiragino Kaku Gothic ProN","Noto Sans JP",sans-serif;background:var(--bg);color:var(--ink);
+    -webkit-tap-highlight-color:transparent;
+    -webkit-user-select:none;-ms-user-select:none;user-select:none;-webkit-touch-callout:none; /* 長押し選択/コピーを無効化 */
+  }
+  svg{width:14px;height:14px;vertical-align:-2px;display:inline-block}
   header{background:var(--panel);border-bottom:1px solid var(--line);padding:8px 12px;position:sticky;top:0;z-index:20}
   .htop{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
   .htop h1{font-size:15px;margin:0;font-weight:700}
   .date{font-weight:700;color:var(--blue)}
   .total{font-size:12px;color:var(--sub)}
+  .selinfo{font-size:12px;color:var(--blue);font-weight:700}
+  .selinfo a{cursor:pointer;text-decoration:underline;margin-left:6px}
   .presence{margin-left:auto;display:flex;gap:4px;align-items:center;font-size:12px;color:var(--sub)}
   .ava{width:22px;height:22px;border-radius:50%;background:var(--green);color:#fff;display:grid;place-items:center;font-size:11px;border:2px solid #fff;box-shadow:0 0 0 1px var(--green)}
   .alertbar{margin-top:6px;font-size:13px;display:flex;gap:12px;flex-wrap:wrap;color:var(--sub)}
   .alertbar b{color:var(--red)}
   .ok{color:var(--green)!important}
   .legend{margin-top:6px;display:flex;gap:6px;flex-wrap:wrap}
-  .legend .tag{cursor:pointer;user-select:none}
+  .legend .tag{cursor:pointer}
   .legend .tag.off{opacity:.35}
 
   main{display:grid;grid-template-columns:230px 1fr 180px;gap:10px;padding:10px;align-items:start}
@@ -35,26 +42,30 @@
   .pool,.vpool{padding:8px;display:flex;flex-wrap:wrap;gap:6px;align-content:flex-start}
 
   /* 駒（人・車両） */
-  .chip{display:inline-flex;align-items:center;gap:4px;padding:5px 8px;border-radius:999px;background:#fff;border:2px solid #9aa5b1;font-size:13px;font-weight:600;cursor:grab;touch-action:none;user-select:none;white-space:nowrap;line-height:1}
-  .chip .badges{font-size:11px}
-  .chip.placed{opacity:.4} /* プールでは配置済みも薄く残す */
+  .chip{display:inline-flex;align-items:center;gap:4px;padding:5px 8px;border-radius:999px;background:#fff;border:2px solid #9aa5b1;font-size:13px;font-weight:600;cursor:grab;touch-action:none;white-space:nowrap;line-height:1;-webkit-touch-callout:none}
+  .bdg{display:inline-flex}
+  .chip.placed{opacity:.4}
   .chip.dim{opacity:.18}
+  .chip.sel{box-shadow:0 0 0 2px var(--blue), 0 0 0 4px rgba(47,111,237,.25);}
   .chip[data-border="blue"]{border-color:var(--blue)}
   .chip[data-border="yellow"]{border-color:var(--yellow);background:#fff8e6}
   .chip[data-border="orange"]{border-color:var(--orange);background:#fff3ea}
-  .chip.veh{border-color:#7b8794;background:#eef1f4}
-  .chip.dragging{opacity:.5}
-  .floating{position:fixed;z-index:1000;pointer-events:none;box-shadow:0 6px 18px rgba(0,0,0,.25);transform:translate(-50%,-50%) scale(1.05)}
+  .chip.veh{border-color:#5b6673;background:#eef1f4;color:#3a444f}
+  .chip.dragging{opacity:.45}
+  .floating{position:fixed;left:0;top:0;z-index:1000;pointer-events:none;will-change:transform;box-shadow:0 6px 18px rgba(0,0,0,.28)}
+  .gcount{background:var(--blue);color:#fff;border-radius:999px;padding:1px 6px;margin-left:4px;font-size:11px}
 
   /* 配車フィールド（現場カードのグリッド） */
-  .board{padding:10px;display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:10px}
+  .board{padding:10px;display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:10px}
   .card{border:1px solid var(--line);border-radius:10px;overflow:hidden;background:#fff}
   .card.drop-hi{outline:2px dashed var(--blue);outline-offset:-2px}
-  .card h3{margin:0;padding:7px 9px;font-size:13px;background:#f0f3f7;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:6px}
+  .card h3{margin:0;padding:7px 9px;font-size:13px;background:#f0f3f7;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+  .card h3 .title{font-weight:700}
+  .card h3 .chip.veh{font-size:11px;padding:3px 7px;font-weight:600}
   .card .meta{padding:5px 9px;font-size:11px;color:var(--sub);border-bottom:1px dashed var(--line)}
   .count{margin-left:auto;font-size:12px;font-weight:700;color:var(--green)}
   .count.short{color:var(--red)}
-  .slots{padding:8px;display:flex;flex-wrap:wrap;gap:6px;min-height:46px}
+  .slots{padding:8px;display:flex;flex-wrap:wrap;gap:6px;min-height:40px}
   .warn{margin:0 9px 8px;font-size:11px;color:var(--red);font-weight:700}
   .empty-slot{font-size:11px;color:var(--red);align-self:center}
   .pool.drop-hi,.vpool.drop-hi{outline:2px dashed var(--blue);outline-offset:-4px}
@@ -70,6 +81,7 @@
     <h1>らくらく手配</h1>
     <span class="date">◀ 6/5(木) ▶</span>
     <span class="total" id="total"></span>
+    <span class="selinfo" id="selinfo"></span>
     <button class="add" style="width:auto;margin:0;padding:5px 10px" id="copyPrev">前日コピー</button>
     <div class="presence"><span class="ava">山</span><span class="ava" style="background:#7b54d6;box-shadow:0 0 0 1px #7b54d6">佐</span> 編集中</div>
   </div>
@@ -79,16 +91,16 @@
 
 <main>
   <section class="col">
-    <h2>人員プール（色＝タグ / タップで絞り込み）</h2>
+    <h2>人員プール（タップで選択 / 凡例タップで絞り込み）</h2>
     <div class="pool" id="pool" data-drop="pool"></div>
   </section>
 
   <section class="col">
     <h2>配車フィールド（現場カード）— 駒を長押し→ドラッグ</h2>
-    <div class="proto-note">実際の配車表（6/5・総員69名）を読み取って再現したサンプルです。<b>手書き判読のため固有名に誤りがあるかも</b>。各行＝現場、人数＝必要数、先頭の人を運転手と仮定、「○名」は応援枠として1チップにしています。データは保存されません。</div>
+    <div class="proto-note">実際の配車表（6/5）を読み取ったサンプル（固有名は要修正）。<b>タップで複数選択 → ドラッグでまとめて移動</b>できます。データは保存されません。</div>
     <div class="board" id="board"></div>
     <button class="add" id="addSite">＋ 現場カードを追加</button>
-    <div class="hint">操作: 駒を<b>長押し</b>してドラッグ→現場カードへドロップ。プールへ戻すと外れます。<br>欠員・重複・「車両ありなのに運転手なし」を自動で警告します。</div>
+    <div class="hint">操作: <b>タップ＝選択</b> / <b>長押し＋ドラッグ＝移動</b>（選択中の人はまとめて運べます）。プールへ戻すと外れます。</div>
   </section>
 
   <section class="col">
@@ -99,16 +111,23 @@
 </main>
 
 <script>
+// ---- アイコン（Lucide系 / インラインSVG）----
+const SVG = {
+  truck:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 18V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v11a1 1 0 0 0 1 1h2"/><path d="M15 18H9"/><path d="M19 18h2a1 1 0 0 0 1-1v-3.65a1 1 0 0 0-.22-.62l-3.48-4.35A1 1 0 0 0 17.52 8H14"/><circle cx="7" cy="18" r="2"/><circle cx="17" cy="18" r="2"/></svg>`,
+  car:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2"/><circle cx="7" cy="17" r="2"/><path d="M9 17h6"/><circle cx="17" cy="17" r="2"/></svg>`,
+  star:`<svg viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>`,
+  helper:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" x2="19" y1="8" y2="14"/><line x1="22" x2="16" y1="11" y2="11"/></svg>`,
+};
+
 // ---- タグ定義 ----
 const TAGS = {
-  driver:{label:"運転可",icon:"🚗",border:"blue",kind:"capability"},
-  newbie:{label:"新人",icon:"",border:"yellow",kind:"status"},
-  leader:{label:"リーダー",icon:"★",border:"blue",kind:"role"},
-  helper:{label:"応援",icon:"",border:"orange",kind:"status"},
+  driver:{label:"運転可",svg:SVG.car,border:"blue",color:"var(--blue)"},
+  newbie:{label:"新人",svg:"",border:"yellow",color:"var(--yellow)"},
+  leader:{label:"リーダー",svg:SVG.star,border:"blue",color:"var(--blue)"},
+  helper:{label:"応援",svg:SVG.helper,border:"orange",color:"var(--orange)"},
 };
 
 // ---- 実際の配車表(6/5)を読み取ったシード ----
-// member = [氏名, タグ]  タグ: 1=運転可(先頭=運転手と仮定) / 2=応援(送り/外注/○名) / 0=なし
 const SEED = [
  {c:"大崎建設",n:"",v:"7405",t:"4:50",w:"土木",m:[["坂元",1],["斉藤",0],["大道",0]]},
  {c:"高城総業",n:"豊岡",v:"7406",t:"5:15",w:"解体",send:1,m:[["平野",1],["猿田",0],["北林",0],["古谷",0],["大井川",0],["川島",0],["富音",0],["仲登2名",2]]},
@@ -132,10 +151,10 @@ const SEED = [
  {c:"JFE",n:"",v:"自社",t:"",w:"工場",m:[["斉藤(JFE)",1]]},
  {c:"(株)BONUS",n:"",v:"自社",t:"",w:"清掃",m:[["高山",1]]},
 ];
-const OFF=["亀之國","石田","平田","柳原","伊達","橋本","杉山","松岡"]; // 休み
-const HOSP=["中川"]; // 入院
+const OFF=["亀之國","石田","平田","柳原","伊達","橋本","杉山","松岡"];
+const HOSP=["中川"];
 
-// ---- シードからモデルを構築 ----
+// ---- モデル構築 ----
 let people=[], vehicles=[], sites=[], asg={};
 (function build(){
   let pid=0, vid=0; const vmap={};
@@ -143,55 +162,42 @@ let people=[], vehicles=[], sites=[], asg={};
     const sid="s"+(i+1);
     sites.push({id:sid,client:s.c,name:s.n,time:s.t,content:s.w,need:s.m.length,needVehicle:!!s.v,note:s.note,send:s.send});
     asg[sid]={members:[],vehicles:[]};
-    s.m.forEach(([nm,tg])=>{
-      const id="p"+(++pid);
-      people.push({id,name:nm,tags: tg===1?["driver"]:tg===2?["helper"]:[]});
-      asg[sid].members.push(id);
-    });
-    if(s.v){
-      if(!vmap[s.v]){vmap[s.v]={id:"v"+(++vid),name:s.v,icon:"🚚"};vehicles.push(vmap[s.v]);}
-      asg[sid].vehicles.push(vmap[s.v].id);
-    }
+    s.m.forEach(([nm,tg])=>{const id="p"+(++pid);people.push({id,name:nm,tags: tg===1?["driver"]:tg===2?["helper"]:[]});asg[sid].members.push(id);});
+    if(s.v){if(!vmap[s.v]){vmap[s.v]={id:"v"+(++vid),name:s.v};vehicles.push(vmap[s.v]);}asg[sid].vehicles.push(vmap[s.v].id);}
   });
-  OFF.forEach(nm=>people.push({id:"p"+(++pid),name:nm+"(休)",tags:[]}));   // 休みは未配置でプールに
+  OFF.forEach(nm=>people.push({id:"p"+(++pid),name:nm+"(休)",tags:[]}));
   HOSP.forEach(nm=>people.push({id:"p"+(++pid),name:nm+"(入院)",tags:[]}));
 })();
 let filterTag = null;
+const selected = new Set();   // まとめて選択（person id）
 
 // ---- ヘルパ ----
 const byId=(arr,id)=>arr.find(x=>x.id===id);
 function personSites(pid){return sites.filter(s=>asg[s.id]?.members.includes(pid));}
 function vehicleSites(vid){return sites.filter(s=>asg[s.id]?.vehicles.includes(vid));}
 function siteHasDriver(sid){return (asg[sid]?.members||[]).some(pid=>byId(people,pid)?.tags.includes("driver"));}
-function repBorder(p){
-  if(p.tags.includes("helper"))return "orange";
-  if(p.tags.includes("newbie"))return "yellow";
-  if(p.tags.includes("driver")||p.tags.includes("leader"))return "blue";
-  return "";
-}
-function badges(p){return p.tags.map(t=>TAGS[t].icon).filter(Boolean).join("");}
+function repBorder(p){if(p.tags.includes("helper"))return "orange";if(p.tags.includes("newbie"))return "yellow";if(p.tags.includes("driver")||p.tags.includes("leader"))return "blue";return "";}
+function badges(p){return p.tags.map(t=>TAGS[t].svg?`<span class="bdg" style="color:${TAGS[t].color}">${TAGS[t].svg}</span>`:"").join("");}
 
 // ---- 描画 ----
 function chipPerson(p,{inPool=false,siteId=null}={}){
-  const placed = personSites(p.id).length>0;
-  const dup = personSites(p.id).length>1;
-  const dimByFilter = filterTag && !p.tags.includes(filterTag);
+  const placed=personSites(p.id).length>0, dup=personSites(p.id).length>1;
+  const dimByFilter=filterTag&&!p.tags.includes(filterTag);
   const cls=["chip"];
   if(inPool&&placed)cls.push("placed");
   if(dimByFilter)cls.push("dim");
-  const dupMark = (dup&&siteId)?' <span style="color:var(--red)">⚠重複</span>':'';
-  return `<span class="${cls.join(' ')}" data-border="${repBorder(p)}" data-type="person" data-id="${p.id}" data-from="${inPool?'pool':siteId}">
-    ${p.name}<span class="badges">${badges(p)}</span>${dupMark}</span>`;
+  if(selected.has(p.id))cls.push("sel");
+  const dupMark=(dup&&siteId)?' <span style="color:var(--red)">⚠</span>':'';
+  return `<span class="${cls.join(' ')}" data-border="${repBorder(p)}" data-type="person" data-id="${p.id}" data-from="${inPool?'pool':siteId}">${p.name}${badges(p)}${dupMark}</span>`;
 }
 function chipVehicle(v,{inPool=false,siteId=null}={}){
-  const placed=vehicleSites(v.id).length>0;
-  const cls=["chip","veh"];if(inPool&&placed)cls.push("placed");
-  return `<span class="${cls.join(' ')}" data-type="vehicle" data-id="${v.id}" data-from="${inPool?'vpool':siteId}">${v.icon||"🚘"} ${v.name}</span>`;
+  const placed=vehicleSites(v.id).length>0;const cls=["chip","veh"];if(inPool&&placed)cls.push("placed");
+  return `<span class="${cls.join(' ')}" data-type="vehicle" data-id="${v.id}" data-from="${inPool?'vpool':siteId}"><span class="bdg">${SVG.truck}</span>${v.name}</span>`;
 }
 
 function render(){
   document.getElementById("legend").innerHTML = Object.entries(TAGS).map(([k,t])=>
-    `<span class="chip tag ${filterTag&&filterTag!==k?'off':''}" data-border="${t.border}" data-tag="${k}">${t.icon} ${t.label}</span>`).join("");
+    `<span class="chip tag ${filterTag&&filterTag!==k?'off':''}" data-border="${t.border}" data-tag="${k}">${t.svg?`<span class="bdg" style="color:${t.color}">${t.svg}</span>`:''}${t.label}</span>`).join("");
 
   document.getElementById("pool").innerHTML = people.map(p=>chipPerson(p,{inPool:true})).join("");
   document.getElementById("vpool").innerHTML = vehicles.map(v=>chipVehicle(v,{inPool:true})).join("");
@@ -201,19 +207,17 @@ function render(){
     const short=a.members.length<s.need;
     const memberChips=a.members.map(pid=>chipPerson(byId(people,pid),{siteId:s.id})).join("");
     const vehChips=a.vehicles.map(vid=>chipVehicle(byId(vehicles,vid),{siteId:s.id})).join("");
-    const emptySlots = short?`<span class="empty-slot">＋空き${s.need-a.members.length}（欠員！）</span>`:"";
-    const warns=[];
-    if(a.vehicles.length>0 && !siteHasDriver(s.id)) warns.push("⚠ 車両ありなのに運転手なし");
+    const emptySlots=short?`<span class="empty-slot">＋空き${s.need-a.members.length}（欠員！）</span>`:"";
+    const warns=[];if(a.vehicles.length>0&&!siteHasDriver(s.id))warns.push("⚠ 車両ありなのに運転手なし");
     const meta=`集合 ${s.time||"-"} ・${s.content}${s.send?" ・送り":""}${s.note?" ・"+s.note:""}`;
     return `<div class="card" data-drop="${s.id}">
-      <h3>${s.client}${s.name?" / "+s.name:""}<span class="count ${short?'short':''}">${a.members.length}/${s.need}${short?'':' ✓'}</span></h3>
+      <h3><span class="title">${s.client}${s.name?" / "+s.name:""}</span>${vehChips}<span class="count ${short?'short':''}">${a.members.length}/${s.need}${short?'':' ✓'}</span></h3>
       <div class="meta">${meta}</div>
-      <div class="slots">${memberChips}${vehChips}${emptySlots}</div>
+      <div class="slots">${memberChips}${emptySlots}</div>
       ${warns.map(w=>`<div class="warn">${w}</div>`).join("")}
     </div>`;
   }).join("");
 
-  // 集計
   let lack=0,dup=new Set(),nodrv=0,assigned=0;
   sites.forEach(s=>{const a=asg[s.id];assigned+=a.members.length;if(a.members.length<s.need)lack++;if(a.vehicles.length>0&&!siteHasDriver(s.id))nodrv++;});
   people.forEach(p=>{if(personSites(p.id).length>1)dup.add(p.id);});
@@ -223,9 +227,14 @@ function render(){
   parts.push(dup.size?`重複配置: <b>${dup.size}名</b>`:`<span class="ok">重複なし</span>`);
   document.getElementById("alertbar").innerHTML="アラート ▸ "+parts.join(" / ");
   document.getElementById("total").textContent=`配置 ${assigned}名 / ${sites.length}現場`;
+  document.getElementById("selinfo").innerHTML = selected.size? `${selected.size}名選択中<a id="clearsel">解除</a>` : "";
 }
 
-// ---- ドラッグ（ポインタイベント / 長押し起動・タッチ対応）----
+// ---- 範囲選択/コピーの抑止 ----
+document.addEventListener("selectstart",e=>{if(drag||e.target.closest(".chip"))e.preventDefault();});
+document.addEventListener("contextmenu",e=>{if(e.target.closest(".chip"))e.preventDefault();});
+
+// ---- ドラッグ（ポインタ・長押し起動・タッチ対応・rAF最適化）----
 let drag=null;
 const LONGPRESS=180;
 function findDropTarget(x,y){let el=document.elementFromPoint(x,y);while(el&&!el.dataset?.drop)el=el.parentElement;return el?el.dataset.drop:null;}
@@ -233,56 +242,73 @@ function clearHi(){document.querySelectorAll(".drop-hi").forEach(e=>e.classList.
 
 document.addEventListener("pointerdown",e=>{
   const chip=e.target.closest(".chip[data-type]");
-  if(!chip)return;
+  if(!chip||chip.classList.contains("tag"))return;
+  e.preventDefault(); // 選択開始を抑止
   const type=chip.dataset.type,id=chip.dataset.id,from=chip.dataset.from;
   const startX=e.clientX,startY=e.clientY;
-  let timer=setTimeout(()=>startDrag(),LONGPRESS);
   let started=false;
+  let timer=setTimeout(startDrag,LONGPRESS);
   function startDrag(){
     started=true;
-    const f=chip.cloneNode(true);f.classList.add("floating");f.classList.remove("placed","dim");
-    document.body.appendChild(f);moveFloat(startX,startY,f);
-    chip.classList.add("dragging");drag={type,id,from,float:f};
+    let ids=[id],group=false;
+    if(type==="person"&&selected.has(id)&&selected.size>1){ids=[...selected];group=true;}
+    const f=chip.cloneNode(true);f.classList.add("floating");f.classList.remove("placed","dim","sel");
+    if(group)f.innerHTML+=`<span class="gcount">${ids.length}</span>`;
+    document.body.appendChild(f);
+    chip.classList.add("dragging");
+    drag={type,id,ids,group,from,float:f,fx:startX,fy:startY,raf:0};
+    paint();
   }
-  function moveFloat(x,y,f){f.style.left=x+"px";f.style.top=y+"px";}
+  function paint(){drag.raf=0;drag.float.style.transform=`translate3d(${drag.fx}px,${drag.fy}px,0) translate(-50%,-50%) scale(1.04)`;}
+  function schedule(){if(!drag.raf)drag.raf=requestAnimationFrame(paint);}
   function onMove(ev){
     if(!started){if(Math.hypot(ev.clientX-startX,ev.clientY-startY)>8){clearTimeout(timer);startDrag();}else return;}
-    ev.preventDefault();moveFloat(ev.clientX,ev.clientY,drag.float);clearHi();
-    const t=findDropTarget(ev.clientX,ev.clientY);
-    if(t){const node=document.querySelector(`[data-drop="${t}"]`);node&&node.classList.add("drop-hi");}
+    ev.preventDefault();
+    drag.fx=ev.clientX;drag.fy=ev.clientY;schedule();
+    clearHi();const t=findDropTarget(ev.clientX,ev.clientY);if(t){const n=document.querySelector(`[data-drop="${t}"]`);n&&n.classList.add("drop-hi");}
   }
   function onUp(ev){
     clearTimeout(timer);
     document.removeEventListener("pointermove",onMove);document.removeEventListener("pointerup",onUp);
-    if(!started)return;
+    if(!started){ // タップ＝選択トグル（人のみ）
+      if(type==="person"){selected.has(id)?selected.delete(id):selected.add(id);render();}
+      return;
+    }
+    if(drag.raf)cancelAnimationFrame(drag.raf);
     const target=findDropTarget(ev.clientX,ev.clientY);
     drag.float.remove();chip.classList.remove("dragging");clearHi();
-    if(target)applyDrop(drag,target);drag=null;
+    if(target)applyDrop(drag,target);
+    drag=null;
   }
   document.addEventListener("pointermove",onMove,{passive:false});
   document.addEventListener("pointerup",onUp);
 });
 
+function pull(sid,type,id){if(!asg[sid])return;if(type==="person")asg[sid].members=asg[sid].members.filter(x=>x!==id);else asg[sid].vehicles=asg[sid].vehicles.filter(x=>x!==id);}
+function push(sid,type,id){if(type==="person"){if(!asg[sid].members.includes(id))asg[sid].members.push(id);}else{if(!asg[sid].vehicles.includes(id))asg[sid].vehicles.push(id);}}
+
 function applyDrop(d,target){
-  const removeFrom=(sid)=>{if(!asg[sid])return;if(d.type==="person")asg[sid].members=asg[sid].members.filter(x=>x!==d.id);else asg[sid].vehicles=asg[sid].vehicles.filter(x=>x!==d.id);};
-  if(target==="pool"||target==="vpool"){if(d.from!=="pool"&&d.from!=="vpool")removeFrom(d.from);render();return;}
-  if(!sites.find(s=>s.id===target)){render();return;}
-  if(d.from!=="pool"&&d.from!=="vpool"&&d.from!==target)removeFrom(d.from);
-  if(d.type==="person"){if(!asg[target].members.includes(d.id))asg[target].members.push(d.id);}
-  else{if(!asg[target].vehicles.includes(d.id))asg[target].vehicles.push(d.id);}
+  const toSite=sites.find(s=>s.id===target), toPool=(target==="pool"||target==="vpool");
+  if(!toSite&&!toPool){render();return;}
+  d.ids.forEach(id=>{
+    if(d.group){sites.forEach(s=>pull(s.id,d.type,id));}                 // 一括移動は元を全部外す
+    else if(d.from!=="pool"&&d.from!=="vpool"&&d.from!==target){pull(d.from,d.type,id);}
+    if(toSite)push(target,d.type,id);
+  });
+  if(d.group)selected.clear();
   render();
 }
 
+// ---- 凡例フィルタ / 選択解除 / 追加 ----
 document.getElementById("legend").addEventListener("click",e=>{const t=e.target.closest("[data-tag]");if(!t)return;filterTag=filterTag===t.dataset.tag?null:t.dataset.tag;render();});
+document.getElementById("selinfo").addEventListener("click",e=>{if(e.target.id==="clearsel"){selected.clear();render();}});
 document.getElementById("addSite").addEventListener("click",()=>{
   const client=prompt("取引先（会社名）は？","");if(client===null)return;
   const name=prompt("現場名は？","");if(name===null)return;
   const need=parseInt(prompt("必要人数は？","3"),10)||1;
-  const id="s"+Date.now();
-  sites.push({id,client:client||"（未設定）",name:name||"",content:"",time:"",need,needVehicle:false});
-  asg[id]={members:[],vehicles:[]};render();
+  const id="s"+Date.now();sites.push({id,client:client||"（未設定）",name:name||"",content:"",time:"",need,needVehicle:false});asg[id]={members:[],vehicles:[]};render();
 });
-document.getElementById("addVeh").addEventListener("click",()=>{const name=prompt("車両名は？（名前だけでOK）","");if(!name)return;vehicles.push({id:"v"+Date.now(),name,icon:"🚘"});render();});
+document.getElementById("addVeh").addEventListener("click",()=>{const name=prompt("車両名は？（名前だけでOK）","");if(!name)return;vehicles.push({id:"v"+Date.now(),name});render();});
 document.getElementById("copyPrev").addEventListener("click",()=>{alert("（プロトタイプ）前日の配車をコピーする想定の機能です。");});
 
 render();
