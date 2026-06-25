@@ -30,6 +30,7 @@
   .selinfo .sbtn{padding:3px 8px;border:1px solid var(--blue);background:#eef4ff;color:var(--blue);border-radius:6px;font-size:12px;font-weight:700;cursor:pointer}
   .toolbtn{padding:5px 10px;border:1px solid var(--line);background:#fff;border-radius:8px;font-size:12px;cursor:pointer}
   .toolbtn.mode{border-color:var(--blue);color:var(--blue);font-weight:700}
+  .toolbtn.view{border-color:var(--green);color:var(--green);font-weight:700}
   .presence{margin-left:auto;display:flex;gap:4px;align-items:center;font-size:12px;color:var(--sub)}
   .ava{width:22px;height:22px;border-radius:50%;background:var(--green);color:#fff;display:grid;place-items:center;font-size:11px;border:2px solid #fff;box-shadow:0 0 0 1px var(--green)}
   .alertbar{margin-top:6px;font-size:13px;display:flex;gap:12px;flex-wrap:wrap;color:var(--sub)}
@@ -59,6 +60,7 @@
   .gcount{background:var(--blue);color:#fff;border-radius:999px;padding:1px 6px;margin-left:4px;font-size:11px}
 
   .board{padding:10px;display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:10px}
+  .board-table{padding:10px;overflow-x:auto}
   .card{border:1px solid var(--line);border-radius:10px;overflow:hidden;background:#fff;touch-action:pan-y}
   .card.drop-hi{outline:2px dashed var(--blue);outline-offset:-2px}
   .card h3{margin:0;padding:7px 9px;font-size:13px;background:#f0f3f7;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:6px;flex-wrap:wrap}
@@ -69,9 +71,23 @@
   .count.short{color:var(--red)}
   .slots{padding:8px;display:flex;flex-wrap:wrap;gap:6px;min-height:40px}
   .warn{margin:0 9px 8px;font-size:11px;color:var(--red);font-weight:700}
-  .empty-slot{font-size:11px;color:var(--red);align-self:center}
+  .empty-slot{font-size:11px;color:var(--red)}
   .empty-day{padding:24px;text-align:center;color:var(--sub);font-size:13px}
   .pool.drop-hi,.vpool.drop-hi{outline:2px dashed var(--blue);outline-offset:-4px}
+
+  /* 表ビュー */
+  .dtable{border-collapse:collapse;width:100%;font-size:12px;background:#fff}
+  .dtable th,.dtable td{border:1px solid var(--line);padding:5px 6px;vertical-align:top;text-align:left}
+  .dtable th{background:#f0f3f7;color:var(--sub);font-size:11px;white-space:nowrap;position:sticky;top:0;z-index:1}
+  .dtable td.c-site{white-space:nowrap;font-weight:700}
+  .dtable td.c-mem .chip{margin:2px}
+  .dtable .cnt{font-weight:700;color:var(--green);margin-right:4px;white-space:nowrap}
+  .dtable .cnt.short{color:var(--red)}
+  .dtable td.c-mem{min-width:170px}
+  .dtable .cellin{width:100%;min-width:54px;border:1px solid transparent;background:transparent;font-size:12px;padding:3px 4px;border-radius:4px;font-family:inherit}
+  .dtable .cellin:focus{border-color:var(--blue);background:#fff;outline:none}
+  .dtable tr.drop-hi td{background:#eaf2ff}
+  .dtable td.c-warn{color:var(--red);font-weight:700;white-space:nowrap}
 
   button.add{margin:8px;padding:8px 10px;border:1px dashed #9aa5b1;background:#fff;border-radius:8px;color:var(--sub);font-size:13px;cursor:pointer;width:calc(100% - 16px)}
   .hint{padding:0 12px 14px;color:var(--sub);font-size:11px;line-height:1.5}
@@ -115,6 +131,7 @@
     <button class="navbtn" id="nextDay">▶</button>
     <span class="total" id="total"></span>
     <span class="selinfo" id="selinfo"></span>
+    <button class="toolbtn view" id="viewBtn">表で見る</button>
     <button class="toolbtn mode" id="modeBtn">かんたん操作</button>
     <button class="toolbtn" id="copyPrev">前日コピー</button>
     <button class="toolbtn" id="resetAll">初期化</button>
@@ -132,11 +149,11 @@
   </section>
 
   <section class="col">
-    <h2>配車フィールド（現場カード）</h2>
-    <div class="proto-note"><b>かんたん操作</b>＝タップでメニュー。<b>サクサク操作</b>＝タップで即選択（ヘッダで切替）。<b>ドラッグ＝移動</b>（下端で自動スクロール）。データは自動保存。</div>
+    <h2>配車フィールド</h2>
+    <div class="proto-note"><b>カード/表</b>で表示切替（表は全現場を俯瞰＋集合・内容・メモを直接編集）。<b>かんたん/サクサク</b>で操作切替。ドラッグ＝移動（下端で自動スクロール）。自動保存。</div>
     <div class="board" id="board"></div>
     <button class="add" id="addSite">＋ 現場カードを追加</button>
-    <div class="hint">日付の ◀ ▶ で別の日へ。<b>前日コピー</b>で前日の配車を丸ごと複製 → 変更点だけ直せます。</div>
+    <div class="hint">日付の ◀ ▶ で別の日へ。<b>前日コピー</b>で前日を複製。表ビューの空欄に集合時間・作業内容・メモを書き込めます。</div>
   </section>
 
   <section class="col">
@@ -216,7 +233,7 @@ function buildSeedState(){
   let pid=0,vid=0;const vmap={},cset=new Set(),sset=new Set();
   SEED.forEach((s,i)=>{
     const sid="s"+(i+1);
-    sites.push({id:sid,client:s.c,name:s.n,time:s.t,content:s.w,need:s.m.length,needVehicle:!!s.v,note:s.note,send:s.send});
+    sites.push({id:sid,client:s.c,name:s.n,time:s.t,content:s.w,need:s.m.length,needVehicle:!!s.v,note:s.note||"",send:s.send});
     asg[sid]={members:[],vehicles:[]};
     s.m.forEach(([nm,tg])=>{const id="p"+(++pid);people.push({id,name:nm,tags:tg===1?["driver"]:tg===2?["helper"]:[]});asg[sid].members.push(id);});
     if(s.v){if(!vmap[s.v]){vmap[s.v]={id:"v"+(++vid),name:s.v};vehicles.push(vmap[s.v]);}asg[sid].vehicles.push(vmap[s.v].id);}
@@ -225,12 +242,13 @@ function buildSeedState(){
   });
   OFF.forEach(nm=>people.push({id:"p"+(++pid),name:nm+"(休)",tags:[]}));
   HOSP.forEach(nm=>people.push({id:"p"+(++pid),name:nm+"(入院)",tags:[]}));
-  return {people,vehicles,clientMaster,siteMaster,days:{[SEED_DATE]:{sites,asg}},currentDate:SEED_DATE,mode:"easy"};
+  return {people,vehicles,clientMaster,siteMaster,days:{[SEED_DATE]:{sites,asg}},currentDate:SEED_DATE,mode:"easy",view:"card"};
 }
 
 function loadState(){try{const r=localStorage.getItem(KEY);if(!r)return null;const s=JSON.parse(r);if(!s||!s.days||!s.people)return null;return s;}catch(e){return null;}}
 let state=loadState()||buildSeedState();
 if(!state.mode)state.mode="easy";
+if(!state.view)state.view="card";
 let currentDate=state.currentDate||SEED_DATE;
 let people,vehicles,clientMaster,siteMaster,sites,asg;
 function ensureDay(d){if(!state.days[d])state.days[d]={sites:[],asg:{}};}
@@ -239,6 +257,7 @@ function save(){state.currentDate=currentDate;try{localStorage.setItem(KEY,JSON.
 bindDay();
 
 let filterTag=null;const selected=new Set();
+const esc=s=>String(s==null?"":s).replace(/&/g,"&amp;").replace(/"/g,"&quot;").replace(/</g,"&lt;");
 
 const WD=["日","月","火","水","木","金","土"];
 function fmt(dt){return dt.getFullYear()+"-"+String(dt.getMonth()+1).padStart(2,"0")+"-"+String(dt.getDate()).padStart(2,"0");}
@@ -252,8 +271,9 @@ function copyPrev(){
   state.days[currentDate]=JSON.parse(JSON.stringify({sites:pd.sites,asg:pd.asg}));
   selected.clear();bindDay();render();
 }
-function resetAll(){if(!confirm("すべての配車データを初期状態（6/5サンプル）に戻しますか？"))return;const mode=state.mode;state=buildSeedState();state.mode=mode;currentDate=SEED_DATE;selected.clear();closeMenu();bindDay();render();}
+function resetAll(){if(!confirm("すべての配車データを初期状態（6/5サンプル）に戻しますか？"))return;const mode=state.mode,view=state.view;state=buildSeedState();state.mode=mode;state.view=view;currentDate=SEED_DATE;selected.clear();closeMenu();bindDay();render();}
 function toggleMode(){state.mode=state.mode==="pro"?"easy":"pro";selected.clear();closeMenu();render();}
+function toggleView(){state.view=state.view==="table"?"card":"table";closeMenu();render();}
 
 const byId=(arr,id)=>arr.find(x=>x.id===id);
 const $=id=>document.getElementById(id);
@@ -277,28 +297,56 @@ function chipVehicle(v,{inPool=false,siteId=null}={}){
   return `<span class="${cls.join(' ')}" data-type="vehicle" data-id="${v.id}" data-from="${inPool?'vpool':siteId}"><span class="bdg">${SVG.truck}</span>${v.name}</span>`;
 }
 
-function render(){
-  $("dateLbl").textContent=dispDate(currentDate);
-  $("modeBtn").textContent = state.mode==="pro"?"サクサク操作":"かんたん操作";
-  $("legend").innerHTML = Object.entries(TAGS).map(([k,t])=>
-    `<span class="chip tag ${filterTag&&filterTag!==k?'off':''}" data-border="${t.border}" data-tag="${k}">${t.svg?`<span class="bdg" style="color:${t.color}">${t.svg}</span>`:''}${t.label}</span>`).join("");
-  $("pool").innerHTML = people.map(p=>chipPerson(p,{inPool:true})).join("");
-  $("vpool").innerHTML = vehicles.map(v=>chipVehicle(v,{inPool:true})).join("");
-  $("board").innerHTML = sites.length? sites.map(s=>{
+function renderCardsHtml(){
+  return sites.map(s=>{
     const a=asg[s.id]||{members:[],vehicles:[]};
     const short=a.members.length<s.need;
     const memberChips=a.members.map(pid=>chipPerson(byId(people,pid),{siteId:s.id})).join("");
     const vehChips=a.vehicles.map(vid=>chipVehicle(byId(vehicles,vid),{siteId:s.id})).join("");
     const emptySlots=short?`<span class="empty-slot">＋空き${s.need-a.members.length}（欠員！）</span>`:"";
     const warns=[];if(a.vehicles.length>0&&!siteHasDriver(s.id))warns.push("⚠ 車両ありなのに運転手なし");
-    const meta=`集合 ${s.time||"-"} ・${s.content||"-"}${s.send?" ・送り":""}${s.note?" ・"+s.note:""}`;
+    const meta=`集合 ${esc(s.time)||"-"} ・${esc(s.content)||"-"}${s.send?" ・送り":""}${s.note?" ・"+esc(s.note):""}`;
     return `<div class="card" data-drop="${s.id}">
-      <h3><span class="title">${s.client}${s.name?" / "+s.name:""}</span>${vehChips}<span class="count ${short?'short':''}">${a.members.length}/${s.need}${short?'':' ✓'}</span></h3>
+      <h3><span class="title">${esc(s.client)}${s.name?" / "+esc(s.name):""}</span>${vehChips}<span class="count ${short?'short':''}">${a.members.length}/${s.need}${short?'':' ✓'}</span></h3>
       <div class="meta">${meta}</div>
       <div class="slots">${memberChips}${emptySlots}</div>
       ${warns.map(w=>`<div class="warn">${w}</div>`).join("")}
     </div>`;
-  }).join("") : `<div class="empty-day">この日の配車はまだありません。<br>「前日コピー」または「＋現場カードを追加」で作成できます。</div>`;
+  }).join("");
+}
+function renderTableHtml(){
+  let h=`<table class="dtable"><thead><tr><th>現場</th><th>車</th><th>集合</th><th>内容</th><th>人員</th><th>メモ</th></tr></thead><tbody>`;
+  h+=sites.map(s=>{
+    const a=asg[s.id]||{members:[],vehicles:[]};
+    const short=a.members.length<s.need;
+    const mem=a.members.map(pid=>chipPerson(byId(people,pid),{siteId:s.id})).join(" ");
+    const veh=a.vehicles.map(vid=>chipVehicle(byId(vehicles,vid),{siteId:s.id})).join(" ");
+    const nodrv=a.vehicles.length>0&&!siteHasDriver(s.id);
+    return `<tr data-drop="${s.id}">
+      <td class="c-site">${esc(s.client)}${s.name?"<br>"+esc(s.name):""}</td>
+      <td>${veh}${nodrv?'<div class="c-warn">運転手なし</div>':''}</td>
+      <td><input class="cellin" data-edit="time" data-site="${s.id}" value="${esc(s.time)}" placeholder="--:--"></td>
+      <td><input class="cellin" data-edit="content" data-site="${s.id}" value="${esc(s.content)}" placeholder="内容"></td>
+      <td class="c-mem"><span class="cnt ${short?'short':''}">${a.members.length}/${s.need}</span>${mem}${short?' <span class="empty-slot">欠員</span>':''}</td>
+      <td><input class="cellin" data-edit="note" data-site="${s.id}" value="${esc(s.note)}" placeholder="メモ"></td>
+    </tr>`;
+  }).join("");
+  h+=`</tbody></table>`;
+  return h;
+}
+
+function render(){
+  $("dateLbl").textContent=dispDate(currentDate);
+  $("modeBtn").textContent = state.mode==="pro"?"サクサク操作":"かんたん操作";
+  $("viewBtn").textContent = state.view==="table"?"カードで見る":"表で見る";
+  $("legend").innerHTML = Object.entries(TAGS).map(([k,t])=>
+    `<span class="chip tag ${filterTag&&filterTag!==k?'off':''}" data-border="${t.border}" data-tag="${k}">${t.svg?`<span class="bdg" style="color:${t.color}">${t.svg}</span>`:''}${t.label}</span>`).join("");
+  $("pool").innerHTML = people.map(p=>chipPerson(p,{inPool:true})).join("");
+  $("vpool").innerHTML = vehicles.map(v=>chipVehicle(v,{inPool:true})).join("");
+  const board=$("board");
+  board.className = state.view==="table"?"board-table":"board";
+  board.innerHTML = sites.length? (state.view==="table"?renderTableHtml():renderCardsHtml())
+    : `<div class="empty-day">この日の配車はまだありません。<br>「前日コピー」または「＋現場カードを追加」で作成できます。</div>`;
   let lack=0,dup=new Set(),nodrv=0,assigned=0;
   sites.forEach(s=>{const a=asg[s.id];assigned+=a.members.length;if(a.members.length<s.need)lack++;if(a.vehicles.length>0&&!siteHasDriver(s.id))nodrv++;});
   people.forEach(p=>{if(personSites(p.id).length>1)dup.add(p.id);});
@@ -337,7 +385,7 @@ function autoScrollTick(){
 
 document.addEventListener("pointerdown",e=>{
   if(!$("menu").classList.contains("hidden")&&!(e.target.closest&&e.target.closest("#menu"))&&!(e.target.closest&&e.target.closest(".selinfo")))closeMenu();
-  if(e.target.closest&&e.target.closest(".modal"))return;
+  if(e.target.closest&&(e.target.closest(".modal")||e.target.closest(".cellin")))return; // 入力欄は通常操作
   const chip=e.target.closest(".chip[data-type]");
   if(chip&&!chip.classList.contains("tag"))return startChip(e,chip);
   const card=e.target.closest(".card[data-drop]");
@@ -379,7 +427,6 @@ function startChip(e,chip){
     }
     if(swiping){ if(Math.abs(dx)>FLICK_DX)commitChipFlick(Math.sign(dx)); else snapBack(chip); return; }
     if(Math.hypot(dx,dy)<10){
-      // タップ：サクサク＝即選択 / かんたん＝選択中のみ即選択・それ以外メニュー
       if(type==="person"&&(state.mode==="pro"||selected.size>0)){ selected.has(id)?selected.delete(id):selected.add(id); render(); return; }
       const r=chip.getBoundingClientRect(); openMenu(type,id,from,r.left,r.bottom);
     }
@@ -417,7 +464,6 @@ function startCard(e,card){
   document.addEventListener("pointerup",onUp);
 }
 
-// ---- タップメニュー（かんたん操作）----
 let menuCtx=null;
 function closeMenu(){$("menu").classList.add("hidden");$("menu").innerHTML="";menuCtx=null;}
 function openMenu(type,id,from,x,y){
@@ -441,7 +487,7 @@ function openGroupMoveMenu(anchor){
 function renderMenuRoot(){
   const c=menuCtx;
   const who=c.type==="person"?(byId(people,c.id)?.name||""):("車両 "+(byId(vehicles,c.id)?.name||""));
-  let h=`<div class="mhead">${who}</div>`;
+  let h=`<div class="mhead">${esc(who)}</div>`;
   if(c.inSite){
     h+=`<button data-act="return">人員プールに戻す</button>`;
     h+=`<button data-act="movesub">別の現場へ移す ▸</button>`;
@@ -456,7 +502,7 @@ function renderMenuSites(){
   const c=menuCtx;
   let h=`<div class="mhead">${c.group?"選択中 "+c.ids.length+"名を移す先":"移す先を選ぶ"}</div>`;
   const list=sites.filter(s=>!(c.inSite&&s.id===c.from));
-  if(list.length) h+=list.map(s=>`<button data-act="moveto" data-site="${s.id}">${s.client}${s.name?" / "+s.name:""}</button>`).join("");
+  if(list.length) h+=list.map(s=>`<button data-act="moveto" data-site="${s.id}">${esc(s.client)}${s.name?" / "+esc(s.name):""}</button>`).join("");
   else h+=`<div class="mempty">移せる現場がありません</div>`;
   $("menu").innerHTML=h;
 }
@@ -487,6 +533,9 @@ function applyDrop(d,target){
   render();
 }
 
+// 表ビューのセル編集（集合・内容・メモ）
+$("board").addEventListener("change",e=>{const i=e.target.closest(".cellin");if(!i)return;const s=byId(sites,i.dataset.site);if(!s)return;s[i.dataset.edit]=i.value;save();});
+
 let needVal=3, capClient="", capSite="";
 const normq=x=>(x||"").toLowerCase().trim();
 function matchList(list,q){q=normq(q);if(!q)return list.slice(0,8);return list.filter(e=>normq(e.name).includes(q)||normq(e.reading).includes(q)).slice(0,8);}
@@ -495,8 +544,8 @@ function renderSug(which){
   const list=which==="client"?clientMaster:siteMaster;
   const box=which==="client"?$("clientSug"):$("siteSug");
   const q=input.value;
-  let html=matchList(list,q).map(e=>`<div data-pick="${which}" data-name="${e.name}">${e.name}${e.reading?`<span class="rb">${e.reading}</span>`:""}</div>`).join("");
-  if(q.trim()&&!list.some(e=>e.name===q.trim())) html+=`<div class="new" data-pick="${which}" data-name="${q.trim()}">＋「${q.trim()}」を新規登録</div>`;
+  let html=matchList(list,q).map(e=>`<div data-pick="${which}" data-name="${esc(e.name)}">${esc(e.name)}${e.reading?`<span class="rb">${esc(e.reading)}</span>`:""}</div>`).join("");
+  if(q.trim()&&!list.some(e=>e.name===q.trim())) html+=`<div class="new" data-pick="${which}" data-name="${esc(q.trim())}">＋「${esc(q.trim())}」を新規登録</div>`;
   box.innerHTML=html;
 }
 function openSiteModal(){closeMenu();needVal=3;capClient="";capSite="";$("needVal").textContent="3";$("fClient").value="";$("fSite").value="";renderSug("client");renderSug("site");$("siteModal").classList.remove("hidden");setTimeout(()=>$("fClient").focus(),50);}
@@ -517,12 +566,13 @@ $("siteOk").addEventListener("click",()=>{
   if(!clientMaster.some(e=>e.name===client))clientMaster.push({name:client,reading:capClient||""});
   if(sname&&!siteMaster.some(e=>e.name===sname))siteMaster.push({name:sname,reading:capSite||""});
   const id="s"+Date.now();
-  sites.push({id,client,name:sname,content:"",time:"",need:needVal,needVehicle:false});asg[id]={members:[],vehicles:[]};
+  sites.push({id,client,name:sname,content:"",time:"",note:"",need:needVal,needVehicle:false});asg[id]={members:[],vehicles:[]};
   closeSiteModal();render();
 });
 
 $("prevDay").addEventListener("click",()=>shiftDate(-1));
 $("nextDay").addEventListener("click",()=>shiftDate(1));
+$("viewBtn").addEventListener("click",toggleView);
 $("modeBtn").addEventListener("click",toggleMode);
 $("copyPrev").addEventListener("click",copyPrev);
 $("resetAll").addEventListener("click",resetAll);
