@@ -25,8 +25,9 @@
   .navbtn{border:none;background:none;font-size:18px;color:var(--blue);cursor:pointer;padding:0 4px;line-height:1}
   .date{font-weight:700;color:var(--blue);min-width:74px;text-align:center}
   .total{font-size:12px;color:var(--sub)}
-  .selinfo{font-size:12px;color:var(--blue);font-weight:700}
-  .selinfo a{cursor:pointer;text-decoration:underline;margin-left:6px}
+  .selinfo{font-size:12px;color:var(--blue);font-weight:700;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+  .selinfo a{cursor:pointer;text-decoration:underline}
+  .selinfo .sbtn{padding:3px 8px;border:1px solid var(--blue);background:#eef4ff;color:var(--blue);border-radius:6px;font-size:12px;font-weight:700;cursor:pointer}
   .toolbtn{padding:5px 10px;border:1px solid var(--line);background:#fff;border-radius:8px;font-size:12px;cursor:pointer}
   .presence{margin-left:auto;display:flex;gap:4px;align-items:center;font-size:12px;color:var(--sub)}
   .ava{width:22px;height:22px;border-radius:50%;background:var(--green);color:#fff;display:grid;place-items:center;font-size:11px;border:2px solid #fff;box-shadow:0 0 0 1px var(--green)}
@@ -75,7 +76,6 @@
   .hint{padding:0 12px 14px;color:var(--sub);font-size:11px;line-height:1.5}
   .proto-note{margin:0 10px 12px;padding:8px 10px;background:#fffbe6;border:1px solid #f0e0a0;border-radius:8px;font-size:11px;color:#7a6a1f}
 
-  /* タップメニュー */
   .menu{position:fixed;z-index:200;background:#fff;border:1px solid var(--line);border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.18);min-width:200px;max-width:250px;max-height:320px;overflow-y:auto}
   .menu.hidden{display:none}
   .menu .mhead{padding:8px 12px;font-size:12px;color:var(--sub);font-weight:700;border-bottom:1px solid var(--line);background:#f7f9fb;position:sticky;top:0}
@@ -131,10 +131,10 @@
 
   <section class="col">
     <h2>配車フィールド（現場カード）</h2>
-    <div class="proto-note">操作: <b>チップをタップ＝メニュー</b>（移す/戻す/削除/選択）。<b>ドラッグ＝移動</b>。フリックは近道。データは<b>この端末に自動保存</b>。</div>
+    <div class="proto-note">操作: <b>タップ＝メニュー</b>（移す/戻す/削除/選択）。<b>選択中は人をタップで即追加</b>→ヘッダの「現場へ移す」でまとめて移動。<b>ドラッグ＝移動</b>。データは自動保存。</div>
     <div class="board" id="board"></div>
     <button class="add" id="addSite">＋ 現場カードを追加</button>
-    <div class="hint">日付の ◀ ▶ で別の日へ。<b>前日コピー</b>で前日の配車を丸ごと複製 → 変更点だけ直せます。迷ったらチップをタップ＝できる操作が全部出ます。</div>
+    <div class="hint">日付の ◀ ▶ で別の日へ。<b>前日コピー</b>で前日の配車を丸ごと複製 → 変更点だけ直せます。</div>
   </section>
 
   <section class="col">
@@ -303,7 +303,7 @@ function render(){
   parts.push(dup.size?`重複配置: <b>${dup.size}名</b>`:`<span class="ok">重複なし</span>`);
   $("alertbar").innerHTML="アラート ▸ "+parts.join(" / ");
   $("total").textContent=`配置 ${assigned}名 / ${sites.length}現場`;
-  $("selinfo").innerHTML = selected.size? `${selected.size}名選択中<a id="clearsel">解除</a>` : "";
+  $("selinfo").innerHTML = selected.size? `${selected.size}名選択 <button class="sbtn" data-sact="move">現場へ移す</button><button class="sbtn" data-sact="pool">プールへ</button><a id="clearsel">解除</a>` : "";
   save();
 }
 
@@ -322,7 +322,7 @@ function paintFloat(){if(!drag)return;drag.raf=0;drag.float.style.transform=`tra
 function scheduleFloat(){if(drag&&!drag.raf)drag.raf=requestAnimationFrame(paintFloat);}
 
 document.addEventListener("pointerdown",e=>{
-  if(!$("menu").classList.contains("hidden")&&!(e.target.closest&&e.target.closest("#menu")))closeMenu();
+  if(!$("menu").classList.contains("hidden")&&!(e.target.closest&&e.target.closest("#menu"))&&!(e.target.closest&&e.target.closest(".selinfo")))closeMenu();
   if(e.target.closest&&e.target.closest(".modal"))return;
   const chip=e.target.closest(".chip[data-type]");
   if(chip&&!chip.classList.contains("tag"))return startChip(e,chip);
@@ -362,7 +362,11 @@ function startChip(e,chip){
       if(target)applyDrop(drag,target);drag=null;return;
     }
     if(swiping){ if(Math.abs(dx)>FLICK_DX)commitChipFlick(Math.sign(dx)); else snapBack(chip); return; }
-    if(Math.hypot(dx,dy)<10){ const r=chip.getBoundingClientRect(); openMenu(type,id,from,r.left,r.bottom); }
+    if(Math.hypot(dx,dy)<10){
+      // 選択中に人をタップ＝即トグル（メニューを出さない・上級者向け）
+      if(type==="person"&&selected.size>0){ selected.has(id)?selected.delete(id):selected.add(id); render(); return; }
+      const r=chip.getBoundingClientRect(); openMenu(type,id,from,r.left,r.bottom);
+    }
   }
   function commitChipFlick(dir){
     const inSite=(from!=="pool"&&from!=="vpool");
@@ -402,19 +406,25 @@ let menuCtx=null;
 function closeMenu(){$("menu").classList.add("hidden");$("menu").innerHTML="";menuCtx=null;}
 function openMenu(type,id,from,x,y){
   const inSite=(from!=="pool"&&from!=="vpool");
-  const isPerson=type==="person";
-  const group=isPerson&&selected.has(id)&&selected.size>1;
-  const ids=group?[...selected]:[id];
-  menuCtx={type,id,from,inSite,group,ids};
+  menuCtx={type,id,from,inSite,group:false,ids:[id]};
   renderMenuRoot();
   const m=$("menu");m.classList.remove("hidden");
   const w=230,vw=window.innerWidth,vh=window.innerHeight;
   m.style.left=Math.max(8,Math.min(x,vw-w-8))+"px";
   m.style.top=Math.max(8,Math.min(y+6,vh-300))+"px";
 }
+function openGroupMoveMenu(anchor){
+  const ids=[...selected];if(!ids.length)return;
+  menuCtx={type:"person",id:ids[0],from:"-",inSite:false,group:true,ids};
+  renderMenuSites();
+  const m=$("menu");m.classList.remove("hidden");
+  const r=anchor.getBoundingClientRect();
+  m.style.left=Math.max(8,Math.min(r.left,window.innerWidth-238))+"px";
+  m.style.top=(r.bottom+6)+"px";
+}
 function renderMenuRoot(){
   const c=menuCtx;
-  const who=c.group?("選択中 "+c.ids.length+"名"):(c.type==="person"?(byId(people,c.id)?.name||""):("車両 "+(byId(vehicles,c.id)?.name||"")));
+  const who=c.type==="person"?(byId(people,c.id)?.name||""):("車両 "+(byId(vehicles,c.id)?.name||""));
   let h=`<div class="mhead">${who}</div>`;
   if(c.inSite){
     h+=`<button data-act="return">人員プールに戻す</button>`;
@@ -428,7 +438,7 @@ function renderMenuRoot(){
 }
 function renderMenuSites(){
   const c=menuCtx;
-  let h=`<div class="mhead">移す先を選ぶ</div>`;
+  let h=`<div class="mhead">${c.group?"選択中 "+c.ids.length+"名を移す先":"移す先を選ぶ"}</div>`;
   const list=sites.filter(s=>!(c.inSite&&s.id===c.from));
   if(list.length) h+=list.map(s=>`<button data-act="moveto" data-site="${s.id}">${s.client}${s.name?" / "+s.name:""}</button>`).join("");
   else h+=`<div class="mempty">移せる現場がありません</div>`;
@@ -440,7 +450,7 @@ $("menu").addEventListener("click",e=>{
   else if(a==="movesub"){renderMenuSites();}
   else if(a==="moveto"){applyDrop({type:c.type,id:c.id,ids:c.ids,group:c.group,from:c.from},b.dataset.site);closeMenu();}
   else if(a==="seltoggle"){selected.has(c.id)?selected.delete(c.id):selected.add(c.id);render();closeMenu();}
-  else if(a==="delete"){const who=c.group?("選択中 "+c.ids.length+"名"):(c.type==="person"?byId(people,c.id)?.name:("車両 "+byId(vehicles,c.id)?.name));if(confirm(who+"を削除しますか？")){c.ids.forEach(x=>deleteRecord(c.type,x));render();}closeMenu();}
+  else if(a==="delete"){const who=c.type==="person"?byId(people,c.id)?.name:("車両 "+byId(vehicles,c.id)?.name);if(confirm(who+"を削除しますか？")){c.ids.forEach(x=>deleteRecord(c.type,x));render();}closeMenu();}
 });
 
 function deleteRecord(type,id){
@@ -500,7 +510,13 @@ $("nextDay").addEventListener("click",()=>shiftDate(1));
 $("copyPrev").addEventListener("click",copyPrev);
 $("resetAll").addEventListener("click",resetAll);
 $("legend").addEventListener("click",e=>{const t=e.target.closest("[data-tag]");if(!t)return;filterTag=filterTag===t.dataset.tag?null:t.dataset.tag;render();});
-$("selinfo").addEventListener("click",e=>{if(e.target.id==="clearsel"){selected.clear();render();}});
+$("selinfo").addEventListener("click",e=>{
+  if(e.target.id==="clearsel"){selected.clear();render();closeMenu();return;}
+  const b=e.target.closest("[data-sact]");if(!b)return;
+  const ids=[...selected];if(!ids.length)return;
+  if(b.dataset.sact==="pool"){applyDrop({type:"person",id:ids[0],ids,group:true,from:"-"},"pool");closeMenu();}
+  else if(b.dataset.sact==="move"){openGroupMoveMenu(b);}
+});
 $("addPerson").addEventListener("click",()=>{const name=prompt("人員の名前は？","");if(!name)return;const driver=confirm("運転可能ですか？（OK=可 / キャンセル=不可）");people.push({id:"p"+Date.now(),name,tags:driver?["driver"]:[]});render();});
 $("addSite").addEventListener("click",openSiteModal);
 $("addVeh").addEventListener("click",()=>{const name=prompt("車両名は？（名前だけでOK）","");if(!name)return;vehicles.push({id:"v"+Date.now(),name});render();});
