@@ -16,7 +16,7 @@
   body{
     font-family:-apple-system,"Hiragino Kaku Gothic ProN","Noto Sans JP",sans-serif;background:var(--bg);color:var(--ink);
     -webkit-tap-highlight-color:transparent;
-    -webkit-user-select:none;-ms-user-select:none;user-select:none;-webkit-touch-callout:none; /* 長押し選択/コピーを無効化 */
+    -webkit-user-select:none;-ms-user-select:none;user-select:none;-webkit-touch-callout:none;
   }
   svg{width:14px;height:14px;vertical-align:-2px;display:inline-block}
   header{background:var(--panel);border-bottom:1px solid var(--line);padding:8px 12px;position:sticky;top:0;z-index:20}
@@ -41,7 +41,6 @@
   .col h2{font-size:12px;margin:0;padding:8px 10px;border-bottom:1px solid var(--line);color:var(--sub);position:sticky;top:0;background:var(--panel);border-radius:10px 10px 0 0}
   .pool,.vpool{padding:8px;display:flex;flex-wrap:wrap;gap:6px;align-content:flex-start}
 
-  /* 駒（人・車両） */
   .chip{display:inline-flex;align-items:center;gap:4px;padding:5px 8px;border-radius:999px;background:#fff;border:2px solid #9aa5b1;font-size:13px;font-weight:600;cursor:grab;touch-action:none;white-space:nowrap;line-height:1;-webkit-touch-callout:none}
   .bdg{display:inline-flex}
   .chip.placed{opacity:.4}
@@ -55,9 +54,8 @@
   .floating{position:fixed;left:0;top:0;z-index:1000;pointer-events:none;will-change:transform;box-shadow:0 6px 18px rgba(0,0,0,.28)}
   .gcount{background:var(--blue);color:#fff;border-radius:999px;padding:1px 6px;margin-left:4px;font-size:11px}
 
-  /* 配車フィールド（現場カードのグリッド） */
   .board{padding:10px;display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:10px}
-  .card{border:1px solid var(--line);border-radius:10px;overflow:hidden;background:#fff}
+  .card{border:1px solid var(--line);border-radius:10px;overflow:hidden;background:#fff;touch-action:pan-y} /* 縦スクロールは許可・横フリックは捕捉 */
   .card.drop-hi{outline:2px dashed var(--blue);outline-offset:-2px}
   .card h3{margin:0;padding:7px 9px;font-size:13px;background:#f0f3f7;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:6px;flex-wrap:wrap}
   .card h3 .title{font-weight:700}
@@ -93,14 +91,15 @@
   <section class="col">
     <h2>人員プール（タップで選択 / 凡例タップで絞り込み）</h2>
     <div class="pool" id="pool" data-drop="pool"></div>
+    <button class="add" id="addPerson">＋ 人員を追加</button>
   </section>
 
   <section class="col">
-    <h2>配車フィールド（現場カード）— 駒を長押し→ドラッグ</h2>
-    <div class="proto-note">実際の配車表（6/5）を読み取ったサンプル（固有名は要修正）。<b>タップで複数選択 → ドラッグでまとめて移動</b>できます。データは保存されません。</div>
+    <h2>配車フィールド（現場カード）</h2>
+    <div class="proto-note">操作: <b>タップ＝選択</b> / <b>長押し＋ドラッグ＝移動</b>（選択中はまとめて移動）/ <b>左右フリック＝削除</b>（確認あり）。データは保存されません。</div>
     <div class="board" id="board"></div>
     <button class="add" id="addSite">＋ 現場カードを追加</button>
-    <div class="hint">操作: <b>タップ＝選択</b> / <b>長押し＋ドラッグ＝移動</b>（選択中の人はまとめて運べます）。プールへ戻すと外れます。</div>
+    <div class="hint">現場カードを左右にフリックすると現場を削除（確認ポップアップ）。人員・車両チップを左右フリックでその対象を削除します。</div>
   </section>
 
   <section class="col">
@@ -119,7 +118,6 @@ const SVG = {
   helper:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" x2="19" y1="8" y2="14"/><line x1="22" x2="16" y1="11" y2="11"/></svg>`,
 };
 
-// ---- タグ定義 ----
 const TAGS = {
   driver:{label:"運転可",svg:SVG.car,border:"blue",color:"var(--blue)"},
   newbie:{label:"新人",svg:"",border:"yellow",color:"var(--yellow)"},
@@ -154,7 +152,6 @@ const SEED = [
 const OFF=["亀之國","石田","平田","柳原","伊達","橋本","杉山","松岡"];
 const HOSP=["中川"];
 
-// ---- モデル構築 ----
 let people=[], vehicles=[], sites=[], asg={};
 (function build(){
   let pid=0, vid=0; const vmap={};
@@ -169,7 +166,7 @@ let people=[], vehicles=[], sites=[], asg={};
   HOSP.forEach(nm=>people.push({id:"p"+(++pid),name:nm+"(入院)",tags:[]}));
 })();
 let filterTag = null;
-const selected = new Set();   // まとめて選択（person id）
+const selected = new Set();
 
 // ---- ヘルパ ----
 const byId=(arr,id)=>arr.find(x=>x.id===id);
@@ -183,10 +180,7 @@ function badges(p){return p.tags.map(t=>TAGS[t].svg?`<span class="bdg" style="co
 function chipPerson(p,{inPool=false,siteId=null}={}){
   const placed=personSites(p.id).length>0, dup=personSites(p.id).length>1;
   const dimByFilter=filterTag&&!p.tags.includes(filterTag);
-  const cls=["chip"];
-  if(inPool&&placed)cls.push("placed");
-  if(dimByFilter)cls.push("dim");
-  if(selected.has(p.id))cls.push("sel");
+  const cls=["chip"];if(inPool&&placed)cls.push("placed");if(dimByFilter)cls.push("dim");if(selected.has(p.id))cls.push("sel");
   const dupMark=(dup&&siteId)?' <span style="color:var(--red)">⚠</span>':'';
   return `<span class="${cls.join(' ')}" data-border="${repBorder(p)}" data-type="person" data-id="${p.id}" data-from="${inPool?'pool':siteId}">${p.name}${badges(p)}${dupMark}</span>`;
 }
@@ -198,10 +192,8 @@ function chipVehicle(v,{inPool=false,siteId=null}={}){
 function render(){
   document.getElementById("legend").innerHTML = Object.entries(TAGS).map(([k,t])=>
     `<span class="chip tag ${filterTag&&filterTag!==k?'off':''}" data-border="${t.border}" data-tag="${k}">${t.svg?`<span class="bdg" style="color:${t.color}">${t.svg}</span>`:''}${t.label}</span>`).join("");
-
   document.getElementById("pool").innerHTML = people.map(p=>chipPerson(p,{inPool:true})).join("");
   document.getElementById("vpool").innerHTML = vehicles.map(v=>chipVehicle(v,{inPool:true})).join("");
-
   document.getElementById("board").innerHTML = sites.map(s=>{
     const a=asg[s.id]||{members:[],vehicles:[]};
     const short=a.members.length<s.need;
@@ -217,7 +209,6 @@ function render(){
       ${warns.map(w=>`<div class="warn">${w}</div>`).join("")}
     </div>`;
   }).join("");
-
   let lack=0,dup=new Set(),nodrv=0,assigned=0;
   sites.forEach(s=>{const a=asg[s.id];assigned+=a.members.length;if(a.members.length<s.need)lack++;if(a.vehicles.length>0&&!siteHasDriver(s.id))nodrv++;});
   people.forEach(p=>{if(personSites(p.id).length>1)dup.add(p.id);});
@@ -234,64 +225,87 @@ function render(){
 document.addEventListener("selectstart",e=>{if(drag||e.target.closest(".chip"))e.preventDefault();});
 document.addEventListener("contextmenu",e=>{if(e.target.closest(".chip"))e.preventDefault();});
 
-// ---- ドラッグ（ポインタ・長押し起動・タッチ対応・rAF最適化）----
+// ---- ドラッグ＆フリック ----
 let drag=null;
-const LONGPRESS=180;
+const LONGPRESS=180, FLICK_DX=50, FLICK_MS=500;
 function findDropTarget(x,y){let el=document.elementFromPoint(x,y);while(el&&!el.dataset?.drop)el=el.parentElement;return el?el.dataset.drop:null;}
 function clearHi(){document.querySelectorAll(".drop-hi").forEach(e=>e.classList.remove("drop-hi"));}
+function paintFloat(){if(!drag)return;drag.raf=0;drag.float.style.transform=`translate3d(${drag.fx}px,${drag.fy}px,0) translate(-50%,-50%) scale(1.04)`;}
+function scheduleFloat(){if(drag&&!drag.raf)drag.raf=requestAnimationFrame(paintFloat);}
 
 document.addEventListener("pointerdown",e=>{
   const chip=e.target.closest(".chip[data-type]");
-  if(!chip||chip.classList.contains("tag"))return;
-  e.preventDefault(); // 選択開始を抑止
+  if(chip&&!chip.classList.contains("tag"))return startChip(e,chip);
+  const card=e.target.closest(".card[data-drop]");
+  if(card)return startCardFlick(e,card);
+});
+
+function startChip(e,chip){
+  e.preventDefault();
   const type=chip.dataset.type,id=chip.dataset.id,from=chip.dataset.from;
-  const startX=e.clientX,startY=e.clientY;
+  const startX=e.clientX,startY=e.clientY,t0=performance.now();
   let started=false;
-  let timer=setTimeout(startDrag,LONGPRESS);
-  function startDrag(){
+  let timer=setTimeout(beginDrag,LONGPRESS);
+  function beginDrag(){
     started=true;
     let ids=[id],group=false;
     if(type==="person"&&selected.has(id)&&selected.size>1){ids=[...selected];group=true;}
     const f=chip.cloneNode(true);f.classList.add("floating");f.classList.remove("placed","dim","sel");
     if(group)f.innerHTML+=`<span class="gcount">${ids.length}</span>`;
-    document.body.appendChild(f);
-    chip.classList.add("dragging");
-    drag={type,id,ids,group,from,float:f,fx:startX,fy:startY,raf:0};
-    paint();
+    document.body.appendChild(f);chip.classList.add("dragging");
+    drag={type,id,ids,group,from,float:f,fx:startX,fy:startY,raf:0};paintFloat();
   }
-  function paint(){drag.raf=0;drag.float.style.transform=`translate3d(${drag.fx}px,${drag.fy}px,0) translate(-50%,-50%) scale(1.04)`;}
-  function schedule(){if(!drag.raf)drag.raf=requestAnimationFrame(paint);}
   function onMove(ev){
-    if(!started){if(Math.hypot(ev.clientX-startX,ev.clientY-startY)>8){clearTimeout(timer);startDrag();}else return;}
-    ev.preventDefault();
-    drag.fx=ev.clientX;drag.fy=ev.clientY;schedule();
+    if(!started){
+      if(Math.hypot(ev.clientX-startX,ev.clientY-startY)>12)clearTimeout(timer); // 先に動いた＝フリック候補（ドラッグにしない）
+      return;
+    }
+    ev.preventDefault();drag.fx=ev.clientX;drag.fy=ev.clientY;scheduleFloat();
     clearHi();const t=findDropTarget(ev.clientX,ev.clientY);if(t){const n=document.querySelector(`[data-drop="${t}"]`);n&&n.classList.add("drop-hi");}
   }
   function onUp(ev){
     clearTimeout(timer);
     document.removeEventListener("pointermove",onMove);document.removeEventListener("pointerup",onUp);
-    if(!started){ // タップ＝選択トグル（人のみ）
-      if(type==="person"){selected.has(id)?selected.delete(id):selected.add(id);render();}
+    const dx=ev.clientX-startX,dy=ev.clientY-startY,dt=performance.now()-t0;
+    if(!started){
+      if(Math.abs(dx)>FLICK_DX&&Math.abs(dx)>Math.abs(dy)*1.5&&dt<FLICK_MS){flickDeleteItem(type,id);return;} // フリック＝削除
+      if(Math.hypot(dx,dy)<10&&type==="person"){selected.has(id)?selected.delete(id):selected.add(id);render();} // タップ＝選択
       return;
     }
     if(drag.raf)cancelAnimationFrame(drag.raf);
     const target=findDropTarget(ev.clientX,ev.clientY);
     drag.float.remove();chip.classList.remove("dragging");clearHi();
-    if(target)applyDrop(drag,target);
-    drag=null;
+    if(target)applyDrop(drag,target);drag=null;
   }
   document.addEventListener("pointermove",onMove,{passive:false});
   document.addEventListener("pointerup",onUp);
-});
+}
 
+function startCardFlick(e,card){
+  const sx=e.clientX,sy=e.clientY,t0=performance.now();
+  function up(ev){
+    document.removeEventListener("pointerup",up);
+    const dx=ev.clientX-sx,dy=ev.clientY-sy,dt=performance.now()-t0;
+    if(Math.abs(dx)>60&&Math.abs(dx)>Math.abs(dy)*1.5&&dt<FLICK_MS)deleteSite(card.dataset.drop);
+  }
+  document.addEventListener("pointerup",up);
+}
+
+// ---- 削除 ----
+function flickDeleteItem(type,id){
+  if(type==="person"){const p=byId(people,id);if(!p)return;if(confirm(`「${p.name}」を削除しますか？`)){people=people.filter(x=>x.id!==id);sites.forEach(s=>pull(s.id,"person",id));selected.delete(id);render();}}
+  else{const v=byId(vehicles,id);if(!v)return;if(confirm(`車両「${v.name}」を削除しますか？`)){vehicles=vehicles.filter(x=>x.id!==id);sites.forEach(s=>pull(s.id,"vehicle",id));render();}}
+}
+function deleteSite(sid){const s=byId(sites,sid);if(!s)return;if(confirm(`現場「${s.client}${s.name?" / "+s.name:""}」を削除しますか？`)){sites=sites.filter(x=>x.id!==sid);delete asg[sid];render();}}
+
+// ---- 移動 ----
 function pull(sid,type,id){if(!asg[sid])return;if(type==="person")asg[sid].members=asg[sid].members.filter(x=>x!==id);else asg[sid].vehicles=asg[sid].vehicles.filter(x=>x!==id);}
 function push(sid,type,id){if(type==="person"){if(!asg[sid].members.includes(id))asg[sid].members.push(id);}else{if(!asg[sid].vehicles.includes(id))asg[sid].vehicles.push(id);}}
-
 function applyDrop(d,target){
   const toSite=sites.find(s=>s.id===target), toPool=(target==="pool"||target==="vpool");
   if(!toSite&&!toPool){render();return;}
   d.ids.forEach(id=>{
-    if(d.group){sites.forEach(s=>pull(s.id,d.type,id));}                 // 一括移動は元を全部外す
+    if(d.group){sites.forEach(s=>pull(s.id,d.type,id));}
     else if(d.from!=="pool"&&d.from!=="vpool"&&d.from!==target){pull(d.from,d.type,id);}
     if(toSite)push(target,d.type,id);
   });
@@ -299,9 +313,14 @@ function applyDrop(d,target){
   render();
 }
 
-// ---- 凡例フィルタ / 選択解除 / 追加 ----
+// ---- フィルタ / 選択解除 / 追加 ----
 document.getElementById("legend").addEventListener("click",e=>{const t=e.target.closest("[data-tag]");if(!t)return;filterTag=filterTag===t.dataset.tag?null:t.dataset.tag;render();});
 document.getElementById("selinfo").addEventListener("click",e=>{if(e.target.id==="clearsel"){selected.clear();render();}});
+document.getElementById("addPerson").addEventListener("click",()=>{
+  const name=prompt("人員の名前は？","");if(!name)return;
+  const driver=confirm("運転可能ですか？（OK=可 / キャンセル=不可）");
+  people.push({id:"p"+Date.now(),name,tags:driver?["driver"]:[]});render();
+});
 document.getElementById("addSite").addEventListener("click",()=>{
   const client=prompt("取引先（会社名）は？","");if(client===null)return;
   const name=prompt("現場名は？","");if(name===null)return;
