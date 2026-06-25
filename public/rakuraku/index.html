@@ -18,6 +18,7 @@
   .htop{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
   .htop h1{font-size:15px;margin:0;font-weight:700}
   .date{font-weight:700;color:var(--blue)}
+  .total{font-size:12px;color:var(--sub)}
   .presence{margin-left:auto;display:flex;gap:4px;align-items:center;font-size:12px;color:var(--sub)}
   .ava{width:22px;height:22px;border-radius:50%;background:var(--green);color:#fff;display:grid;place-items:center;font-size:11px;border:2px solid #fff;box-shadow:0 0 0 1px var(--green)}
   .alertbar{margin-top:6px;font-size:13px;display:flex;gap:12px;flex-wrap:wrap;color:var(--sub)}
@@ -67,7 +68,8 @@
 <header>
   <div class="htop">
     <h1>らくらく手配</h1>
-    <span class="date">◀ 2026/06/25(水) ▶</span>
+    <span class="date">◀ 6/5(木) ▶</span>
+    <span class="total" id="total"></span>
     <button class="add" style="width:auto;margin:0;padding:5px 10px" id="copyPrev">前日コピー</button>
     <div class="presence"><span class="ava">山</span><span class="ava" style="background:#7b54d6;box-shadow:0 0 0 1px #7b54d6">佐</span> 編集中</div>
   </div>
@@ -83,9 +85,9 @@
 
   <section class="col">
     <h2>配車フィールド（現場カード）— 駒を長押し→ドラッグ</h2>
+    <div class="proto-note">実際の配車表（6/5・総員69名）を読み取って再現したサンプルです。<b>手書き判読のため固有名に誤りがあるかも</b>。各行＝現場、人数＝必要数、先頭の人を運転手と仮定、「○名」は応援枠として1チップにしています。データは保存されません。</div>
     <div class="board" id="board"></div>
     <button class="add" id="addSite">＋ 現場カードを追加</button>
-    <div class="proto-note">これは動作プロトタイプです。データは保存されません（リロードで初期化）。共同編集・通知・認証は未実装。</div>
     <div class="hint">操作: 駒を<b>長押し</b>してドラッグ→現場カードへドロップ。プールへ戻すと外れます。<br>欠員・重複・「車両ありなのに運転手なし」を自動で警告します。</div>
   </section>
 
@@ -97,39 +99,63 @@
 </main>
 
 <script>
-// ---- データ（プロトタイプ用シード）----
+// ---- タグ定義 ----
 const TAGS = {
   driver:{label:"運転可",icon:"🚗",border:"blue",kind:"capability"},
   newbie:{label:"新人",icon:"",border:"yellow",kind:"status"},
   leader:{label:"リーダー",icon:"★",border:"blue",kind:"role"},
   helper:{label:"応援",icon:"",border:"orange",kind:"status"},
 };
-let people = [
-  {id:"p1",name:"田中",tags:["driver","leader"]},
-  {id:"p2",name:"佐藤",tags:["driver"]},
-  {id:"p3",name:"鈴木",tags:["newbie"]},
-  {id:"p4",name:"山本",tags:["helper"]},
-  {id:"p5",name:"中村",tags:["driver"]},
-  {id:"p6",name:"渡辺",tags:[]},
-  {id:"p7",name:"高橋",tags:[]},
-  {id:"p8",name:"伊藤",tags:["newbie"]},
+
+// ---- 実際の配車表(6/5)を読み取ったシード ----
+// member = [氏名, タグ]  タグ: 1=運転可(先頭=運転手と仮定) / 2=応援(送り/外注/○名) / 0=なし
+const SEED = [
+ {c:"大崎建設",n:"",v:"7405",t:"4:50",w:"土木",m:[["坂元",1],["斉藤",0],["大道",0]]},
+ {c:"高城総業",n:"豊岡",v:"7406",t:"5:15",w:"解体",send:1,m:[["平野",1],["猿田",0],["北林",0],["古谷",0],["大井川",0],["川島",0],["富音",0],["仲登2名",2]]},
+ {c:"高城総業",n:"三軒茶屋",v:"外注車",t:"5:15",w:"解体",send:1,m:[["石川悟",1],["八田",0],["井上雄",0],["井上",0]]},
+ {c:"高城総業",n:"河之島",v:"7404",t:"5:15",w:"解体 GS/CCUS",m:[["木下",1],["柳田",0],["阿部",0],["安藤",0],["寺重",0],["トウケン",2]]},
+ {c:"高城総業",n:"小寺",v:"",t:"5:15",w:"解体",m:[["松元",0]]},
+ {c:"高城総業",n:"豊田",v:"7404",t:"5:15",w:"解体",send:1,m:[["一条",1],["仙叟",0]]},
+ {c:"高城総業",n:"",v:"代車",t:"5:15",w:"解体 名簿",send:1,m:[["岩村",1],["越後谷",0],["笹岡",0],["菅",0]]},
+ {c:"高城総業",n:"南青山2",v:"",t:"5:15",w:"解体 GS",m:[["村中",0]]},
+ {c:"高城総業",n:"青山",v:"4102",t:"5:15",w:"解体 GS/CCUS",m:[["島田",1],["大沢",0],["石川眞",0],["久田",0],["菅原仁",0]]},
+ {c:"大和栄建",n:"富洋",v:"アクア",t:"5:20",w:"廷場",m:[["松給",1],["中宮",0]]},
+ {c:"クラレ",n:"神橋",v:"78-77(外注)",t:"5:30",w:"プラント",m:[["森井",1],["阿久津",0],["船橋2名",2]]},
+ {c:"高鋼工業",n:"千石",v:"5148",t:"5:45",w:"解体 橋",m:[["太田",1],["佐藤文",0],["GJ3名",2]]},
+ {c:"カマブ",n:"大島田",v:"702",t:"5:30",w:"コンクリ打設 GS",note:"早出7:00スタート",m:[["佐藤幸",1],["田代",0]]},
+ {c:"松振組",n:"池辺町",v:"",t:"5:20",w:"コンクリ打設 GS",m:[["佐々木",1],["沢田",0],["GJ2名",2]]},
+ {c:"旺城資材",n:"行田",v:"6059",t:"4:50",w:"除草作業",m:[["吉田",1],["菅原年",0],["大谷",0]]},
+ {c:"鈴田工作所",n:"神橋",v:"5150",t:"5:50",w:"プラント",m:[["本多",1],["水野",0],["庭野",0],["河原崎",0]]},
+ {c:"橘建設",n:"さくら工業",v:"8120ラテラ",t:"6:00",w:"土木",m:[["宇敷",1],["三島",0],["普政",0]]},
+ {c:"宮澤建設",n:"城端",v:"プリウス",t:"6:00",w:"土木 GS/CCUS",m:[["麻生",1],["野林",0],["堀田",0]]},
+ {c:"戸沢",n:"",v:"",t:"",w:"大工",m:[["中野",0]]},
+ {c:"JFE",n:"",v:"自社",t:"",w:"工場",m:[["斉藤(JFE)",1]]},
+ {c:"(株)BONUS",n:"",v:"自社",t:"",w:"清掃",m:[["高山",1]]},
 ];
-let vehicles = [
-  {id:"v1",name:"1号車",icon:"🚚"},
-  {id:"v2",name:"2号車",icon:"🚙"},
-  {id:"v3",name:"3号車",icon:"🚐"},
-];
-let sites = [
-  {id:"s1",client:"A建設",name:"〇〇現場",time:"7:30",need:4,needVehicle:true},
-  {id:"s2",client:"B運送",name:"倉庫便",time:"6:00",need:2,needVehicle:true},
-  {id:"s3",client:"C設備",name:"ビル清掃",time:"8:00",need:3,needVehicle:false},
-];
-// assignment: siteId -> {members:[pid], vehicles:[vid]}
-let asg = {
-  s1:{members:["p1","p2","p3"],vehicles:["v1"]},
-  s2:{members:["p5"],vehicles:[]},
-  s3:{members:[],vehicles:[]},
-};
+const OFF=["亀之國","石田","平田","柳原","伊達","橋本","杉山","松岡"]; // 休み
+const HOSP=["中川"]; // 入院
+
+// ---- シードからモデルを構築 ----
+let people=[], vehicles=[], sites=[], asg={};
+(function build(){
+  let pid=0, vid=0; const vmap={};
+  SEED.forEach((s,i)=>{
+    const sid="s"+(i+1);
+    sites.push({id:sid,client:s.c,name:s.n,time:s.t,content:s.w,need:s.m.length,needVehicle:!!s.v,note:s.note,send:s.send});
+    asg[sid]={members:[],vehicles:[]};
+    s.m.forEach(([nm,tg])=>{
+      const id="p"+(++pid);
+      people.push({id,name:nm,tags: tg===1?["driver"]:tg===2?["helper"]:[]});
+      asg[sid].members.push(id);
+    });
+    if(s.v){
+      if(!vmap[s.v]){vmap[s.v]={id:"v"+(++vid),name:s.v,icon:"🚚"};vehicles.push(vmap[s.v]);}
+      asg[sid].vehicles.push(vmap[s.v].id);
+    }
+  });
+  OFF.forEach(nm=>people.push({id:"p"+(++pid),name:nm+"(休)",tags:[]}));   // 休みは未配置でプールに
+  HOSP.forEach(nm=>people.push({id:"p"+(++pid),name:nm+"(入院)",tags:[]}));
+})();
 let filterTag = null;
 
 // ---- ヘルパ ----
@@ -137,7 +163,7 @@ const byId=(arr,id)=>arr.find(x=>x.id===id);
 function personSites(pid){return sites.filter(s=>asg[s.id]?.members.includes(pid));}
 function vehicleSites(vid){return sites.filter(s=>asg[s.id]?.vehicles.includes(vid));}
 function siteHasDriver(sid){return (asg[sid]?.members||[]).some(pid=>byId(people,pid)?.tags.includes("driver"));}
-function repBorder(p){ // 代表タグ＝枠線色
+function repBorder(p){
   if(p.tags.includes("helper"))return "orange";
   if(p.tags.includes("newbie"))return "yellow";
   if(p.tags.includes("driver")||p.tags.includes("leader"))return "blue";
@@ -153,9 +179,9 @@ function chipPerson(p,{inPool=false,siteId=null}={}){
   const cls=["chip"];
   if(inPool&&placed)cls.push("placed");
   if(dimByFilter)cls.push("dim");
-  const dupMark = dup?' <span style="color:var(--red)">⚠重複</span>':'';
+  const dupMark = (dup&&siteId)?' <span style="color:var(--red)">⚠重複</span>':'';
   return `<span class="${cls.join(' ')}" data-border="${repBorder(p)}" data-type="person" data-id="${p.id}" data-from="${inPool?'pool':siteId}">
-    ${p.name}<span class="badges">${badges(p)}</span>${siteId?dupMark:''}</span>`;
+    ${p.name}<span class="badges">${badges(p)}</span>${dupMark}</span>`;
 }
 function chipVehicle(v,{inPool=false,siteId=null}={}){
   const placed=vehicleSites(v.id).length>0;
@@ -164,16 +190,12 @@ function chipVehicle(v,{inPool=false,siteId=null}={}){
 }
 
 function render(){
-  // 凡例
   document.getElementById("legend").innerHTML = Object.entries(TAGS).map(([k,t])=>
     `<span class="chip tag ${filterTag&&filterTag!==k?'off':''}" data-border="${t.border}" data-tag="${k}">${t.icon} ${t.label}</span>`).join("");
 
-  // 人員プール
   document.getElementById("pool").innerHTML = people.map(p=>chipPerson(p,{inPool:true})).join("");
-  // 車両プール
   document.getElementById("vpool").innerHTML = vehicles.map(v=>chipVehicle(v,{inPool:true})).join("");
 
-  // 配車フィールド
   document.getElementById("board").innerHTML = sites.map(s=>{
     const a=asg[s.id]||{members:[],vehicles:[]};
     const short=a.members.length<s.need;
@@ -182,34 +204,31 @@ function render(){
     const emptySlots = short?`<span class="empty-slot">＋空き${s.need-a.members.length}（欠員！）</span>`:"";
     const warns=[];
     if(a.vehicles.length>0 && !siteHasDriver(s.id)) warns.push("⚠ 車両ありなのに運転手なし");
+    const meta=`集合 ${s.time||"-"} ・${s.content}${s.send?" ・送り":""}${s.note?" ・"+s.note:""}`;
     return `<div class="card" data-drop="${s.id}">
-      <h3>${s.client} / ${s.name}<span class="count ${short?'short':''}">${a.members.length}/${s.need}${short?'':' ✓'}</span></h3>
-      <div class="meta">集合 ${s.time}${s.needVehicle?' ・要車両':''}</div>
+      <h3>${s.client}${s.name?" / "+s.name:""}<span class="count ${short?'short':''}">${a.members.length}/${s.need}${short?'':' ✓'}</span></h3>
+      <div class="meta">${meta}</div>
       <div class="slots">${memberChips}${vehChips}${emptySlots}</div>
       ${warns.map(w=>`<div class="warn">${w}</div>`).join("")}
     </div>`;
   }).join("");
 
-  // アラートバー集計
-  let lack=0,dup=new Set(),nodrv=0;
-  sites.forEach(s=>{const a=asg[s.id];if(a.members.length<s.need)lack++;if(a.vehicles.length>0&&!siteHasDriver(s.id))nodrv++;});
+  // 集計
+  let lack=0,dup=new Set(),nodrv=0,assigned=0;
+  sites.forEach(s=>{const a=asg[s.id];assigned+=a.members.length;if(a.members.length<s.need)lack++;if(a.vehicles.length>0&&!siteHasDriver(s.id))nodrv++;});
   people.forEach(p=>{if(personSites(p.id).length>1)dup.add(p.id);});
-  const ab=document.getElementById("alertbar");
   const parts=[];
   parts.push(lack?`欠員: <b>${lack}現場</b>`:`<span class="ok">欠員なし</span>`);
   parts.push(nodrv?`運転手不在: <b>${nodrv}現場</b>`:`<span class="ok">運転手OK</span>`);
   parts.push(dup.size?`重複配置: <b>${dup.size}名</b>`:`<span class="ok">重複なし</span>`);
-  ab.innerHTML="アラート ▸ "+parts.join(" / ");
+  document.getElementById("alertbar").innerHTML="アラート ▸ "+parts.join(" / ");
+  document.getElementById("total").textContent=`配置 ${assigned}名 / ${sites.length}現場`;
 }
 
 // ---- ドラッグ（ポインタイベント / 長押し起動・タッチ対応）----
-let drag=null; // {type,id,from,el,float}
+let drag=null;
 const LONGPRESS=180;
-function findDropTarget(x,y){
-  let el=document.elementFromPoint(x,y);
-  while(el&&!el.dataset?.drop) el=el.parentElement;
-  return el?el.dataset.drop:null;
-}
+function findDropTarget(x,y){let el=document.elementFromPoint(x,y);while(el&&!el.dataset?.drop)el=el.parentElement;return el?el.dataset.drop:null;}
 function clearHi(){document.querySelectorAll(".drop-hi").forEach(e=>e.classList.remove("drop-hi"));}
 
 document.addEventListener("pointerdown",e=>{
@@ -222,81 +241,49 @@ document.addEventListener("pointerdown",e=>{
   function startDrag(){
     started=true;
     const f=chip.cloneNode(true);f.classList.add("floating");f.classList.remove("placed","dim");
-    document.body.appendChild(f);
-    moveFloat(startX,startY,f);
-    chip.classList.add("dragging");
-    drag={type,id,from,float:f};
+    document.body.appendChild(f);moveFloat(startX,startY,f);
+    chip.classList.add("dragging");drag={type,id,from,float:f};
   }
   function moveFloat(x,y,f){f.style.left=x+"px";f.style.top=y+"px";}
   function onMove(ev){
-    if(!started){
-      if(Math.hypot(ev.clientX-startX,ev.clientY-startY)>8){clearTimeout(timer);startDrag();}
-      else return;
-    }
-    ev.preventDefault();
-    moveFloat(ev.clientX,ev.clientY,drag.float);
-    clearHi();
+    if(!started){if(Math.hypot(ev.clientX-startX,ev.clientY-startY)>8){clearTimeout(timer);startDrag();}else return;}
+    ev.preventDefault();moveFloat(ev.clientX,ev.clientY,drag.float);clearHi();
     const t=findDropTarget(ev.clientX,ev.clientY);
     if(t){const node=document.querySelector(`[data-drop="${t}"]`);node&&node.classList.add("drop-hi");}
   }
   function onUp(ev){
     clearTimeout(timer);
-    document.removeEventListener("pointermove",onMove);
-    document.removeEventListener("pointerup",onUp);
+    document.removeEventListener("pointermove",onMove);document.removeEventListener("pointerup",onUp);
     if(!started)return;
     const target=findDropTarget(ev.clientX,ev.clientY);
     drag.float.remove();chip.classList.remove("dragging");clearHi();
-    if(target)applyDrop(drag,target);
-    drag=null;
+    if(target)applyDrop(drag,target);drag=null;
   }
   document.addEventListener("pointermove",onMove,{passive:false});
   document.addEventListener("pointerup",onUp);
 });
 
 function applyDrop(d,target){
-  // 元から外す（現場発のとき）
-  const removeFrom=(sid)=>{
-    if(!asg[sid])return;
-    if(d.type==="person")asg[sid].members=asg[sid].members.filter(x=>x!==d.id);
-    else asg[sid].vehicles=asg[sid].vehicles.filter(x=>x!==d.id);
-  };
-  if(target==="pool"||target==="vpool"){
-    if(d.from!=="pool"&&d.from!=="vpool")removeFrom(d.from); // 現場→プール＝外す
-    render();return;
-  }
-  // 現場カードへ
+  const removeFrom=(sid)=>{if(!asg[sid])return;if(d.type==="person")asg[sid].members=asg[sid].members.filter(x=>x!==d.id);else asg[sid].vehicles=asg[sid].vehicles.filter(x=>x!==d.id);};
+  if(target==="pool"||target==="vpool"){if(d.from!=="pool"&&d.from!=="vpool")removeFrom(d.from);render();return;}
   if(!sites.find(s=>s.id===target)){render();return;}
-  if(d.from!=="pool"&&d.from!=="vpool"&&d.from!==target)removeFrom(d.from); // 別現場から移動
-  if(d.type==="person"){
-    if(!asg[target].members.includes(d.id))asg[target].members.push(d.id);
-  }else{
-    if(!asg[target].vehicles.includes(d.id))asg[target].vehicles.push(d.id);
-  }
+  if(d.from!=="pool"&&d.from!=="vpool"&&d.from!==target)removeFrom(d.from);
+  if(d.type==="person"){if(!asg[target].members.includes(d.id))asg[target].members.push(d.id);}
+  else{if(!asg[target].vehicles.includes(d.id))asg[target].vehicles.push(d.id);}
   render();
 }
 
-// ---- 凡例タップで能力フィルタ ----
-document.getElementById("legend").addEventListener("click",e=>{
-  const t=e.target.closest("[data-tag]");if(!t)return;
-  filterTag = filterTag===t.dataset.tag?null:t.dataset.tag;render();
-});
-
-// ---- 追加系 ----
+document.getElementById("legend").addEventListener("click",e=>{const t=e.target.closest("[data-tag]");if(!t)return;filterTag=filterTag===t.dataset.tag?null:t.dataset.tag;render();});
 document.getElementById("addSite").addEventListener("click",()=>{
   const client=prompt("取引先（会社名）は？","");if(client===null)return;
   const name=prompt("現場名は？","");if(name===null)return;
   const need=parseInt(prompt("必要人数は？","3"),10)||1;
   const id="s"+Date.now();
-  sites.push({id,client:client||"（未設定）",name:name||"（未設定）",time:"",need,needVehicle:false});
+  sites.push({id,client:client||"（未設定）",name:name||"",content:"",time:"",need,needVehicle:false});
   asg[id]={members:[],vehicles:[]};render();
 });
-document.getElementById("addVeh").addEventListener("click",()=>{
-  const name=prompt("車両名は？（名前だけでOK）","");if(!name)return;
-  vehicles.push({id:"v"+Date.now(),name,icon:"🚘"});render();
-});
-document.getElementById("copyPrev").addEventListener("click",()=>{
-  alert("（プロトタイプ）前日の配車をコピーする想定の機能です。");
-});
+document.getElementById("addVeh").addEventListener("click",()=>{const name=prompt("車両名は？（名前だけでOK）","");if(!name)return;vehicles.push({id:"v"+Date.now(),name,icon:"🚘"});render();});
+document.getElementById("copyPrev").addEventListener("click",()=>{alert("（プロトタイプ）前日の配車をコピーする想定の機能です。");});
 
 render();
 </script>
