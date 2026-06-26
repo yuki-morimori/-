@@ -175,7 +175,7 @@
 
   <section class="col">
     <h2>配車フィールド</h2>
-    <div class="proto-note"><b>文字:標準/大/特大</b>で人名を拡大（張り出し・掲示用）。<b>カード/表</b>切替・<b>Excel出力</b>で罫線つき.xlsx。<b>↶戻す</b>で取り消し。自動保存。</div>
+    <div class="proto-note">張り出しは<b>Excel出力</b>から。<b>文字:大/特大</b>でExcelの人名も拡大（標準16/大20/特大26pt・太字）。<b>カード/表</b>切替・<b>↶戻す</b>。自動保存。</div>
     <div class="board" id="board"></div>
     <button class="add" id="addSite">＋ 現場カードを追加</button>
     <div class="hint">日付 ◀ ▶ で別の日へ。<b>前日コピー</b>で前日を複製。表ビューで集合・内容・メモを直接編集できます。</div>
@@ -337,18 +337,19 @@ function applyFs(){document.body.dataset.fs=state.fontScale;$("fsBtn").textConte
 function exportData(){const blob=new Blob([JSON.stringify(state,null,2)],{type:"application/json"});const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download="rakuraku-haisha-"+currentDate+".json";document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);}
 function importData(file){const r=new FileReader();r.onload=()=>{try{const s=JSON.parse(r.result);if(!s||!s.days||!s.people){alert("対応していないファイルです。");return;}if(!confirm("現在のデータを、読み込んだ内容で置き換えますか？（戻すには初期化）"))return;state=s;if(!state.mode)state.mode="easy";if(!state.view)state.view="card";if(!state.fontScale)state.fontScale="s";currentDate=state.currentDate||SEED_DATE;undoStack=[];selected.clear();closeMenu();bindDay();applyFs();render();}catch(e){alert("読み込みに失敗しました。");}};r.readAsText(file);}
 
-// ---- Excel出力（送付Excel「カラ」書式を罫線つきで再現 / ExcelJS）----
+// ---- Excel出力（送付Excel「カラ」書式を罫線つきで再現 / 人名は大きく：張り出し用）----
 async function exportXlsx(){
   if(typeof ExcelJS==="undefined"){alert("Excelライブラリの読み込み中です。少し待って再度お試しください。");return;}
   const wb=new ExcelJS.Workbook();
   const ws=wb.addWorksheet(dispDate(currentDate).replace(/[\\/?*\[\]:]/g,"."));
-  ws.columns=[12.25,8.25,10.5,4.25,11.5,11.5,11.5,11.25,11.5,15.25,11.75,7.25,6.75,5,5,5,12].map(w=>({width:w}));
+  ws.columns=[12.25,8.25,10.5,4.25,13,13,13,13,13,15.25,11.75,7.25,6.75,5,5,5,12].map(w=>({width:w}));
   const thin={style:"thin",color:{argb:"FF777777"}};
   const bd={top:thin,left:thin,bottom:thin,right:thin};
   const C=(r,c)=>ws.getCell(r,c);
   let assigned=0; sites.forEach(s=>assigned+=asg[s.id].members.length);
   const rest=people.filter(p=>/\(休\)/.test(p.name)).map(p=>p.name.replace("(休)",""));
   const hosp=people.filter(p=>/\(入院\)/.test(p.name)).map(p=>p.name.replace("(入院)",""));
+  const memFs = state.fontScale==="xl"?26:state.fontScale==="l"?20:16; // 人名サイズ（張り出し用）
   ws.mergeCells(1,1,2,2); C(1,1).value=dispDate(currentDate);
   ws.mergeCells(1,3,2,3); C(1,3).value="現場";
   C(1,4).value="ETC"; C(2,4).value="人数";
@@ -367,14 +368,19 @@ async function exportXlsx(){
     const veh=a.vehicles.map(vid=>byId(vehicles,vid)?.name).filter(Boolean);
     const chunks=[]; for(let i=0;i<mem.length;i+=5)chunks.push(mem.slice(i,i+5)); if(!chunks.length)chunks.push([]);
     const start=r, end=r+chunks.length;
-    ws.mergeCells(start,1,end,2); C(start,1).value=s.client; C(start,1).font={bold:true}; C(start,1).alignment={vertical:"middle",horizontal:"center"};
+    ws.mergeCells(start,1,end,2); C(start,1).value=s.client; C(start,1).font={bold:true,size:13}; C(start,1).alignment={vertical:"middle",horizontal:"center"};
     ws.mergeCells(start,3,end,3); C(start,3).value=s.name||""; C(start,3).alignment={vertical:"middle",horizontal:"center"};
     ws.mergeCells(start,11,end,11); C(start,11).value=s.content||""; C(start,11).alignment={vertical:"middle"};
     ws.mergeCells(start,12,end,12);
     ws.mergeCells(start,13,end,13); C(start,13).value=s.note||""; C(start,13).alignment={vertical:"middle",horizontal:"center"};
     veh.forEach((vn,i)=>{ if(i<5) C(start,5+i).value=vn; });
     C(start,10).value=s.time||"";
-    chunks.forEach((ch,ci)=>{const rr=start+1+ci; if(ci===0){C(rr,4).value=a.members.length;C(rr,4).alignment={horizontal:"center"};} ch.forEach((nm,j)=>{C(rr,5+j).value=nm;C(rr,5+j).font={size:14};});});
+    chunks.forEach((ch,ci)=>{
+      const rr=start+1+ci;
+      if(ci===0){C(rr,4).value=a.members.length;C(rr,4).alignment={horizontal:"center",vertical:"middle"};}
+      ws.getRow(rr).height=Math.round(memFs*1.7); // 大きい人名が収まる行高さ
+      ch.forEach((nm,j)=>{const cell=C(rr,5+j);cell.value=nm;cell.font={size:memFs,bold:true};cell.alignment={vertical:"middle",horizontal:"center"};});
+    });
     r=end+1;
   });
   const lastGrid=r-1;
