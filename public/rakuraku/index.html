@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
 <meta name="robots" content="noindex" />
 <title>らくらく手配 — 配車表エディタ プロトタイプ</title>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <style>
   :root{
     --bg:#f4f6f8; --panel:#fff; --line:#dce1e6; --ink:#1f2933; --sub:#6b7785;
@@ -32,6 +33,7 @@
   .toolbtn:disabled{opacity:.4;cursor:default}
   .toolbtn.mode{border-color:var(--blue);color:var(--blue);font-weight:700}
   .toolbtn.view{border-color:var(--green);color:var(--green);font-weight:700}
+  .toolbtn.xls{border-color:#1f7a44;color:#1f7a44;font-weight:700}
   .presence{margin-left:auto;display:flex;gap:4px;align-items:center;font-size:12px;color:var(--sub)}
   .ava{width:22px;height:22px;border-radius:50%;background:var(--green);color:#fff;display:grid;place-items:center;font-size:11px;border:2px solid #fff;box-shadow:0 0 0 1px var(--green)}
   .alertbar{margin-top:6px;font-size:13px;display:flex;gap:12px;flex-wrap:wrap;color:var(--sub)}
@@ -143,6 +145,7 @@
     <button class="toolbtn" id="undoBtn">↶ 戻す</button>
     <button class="toolbtn view" id="viewBtn">表で見る</button>
     <button class="toolbtn mode" id="modeBtn">かんたん操作</button>
+    <button class="toolbtn xls" id="excelBtn">Excel出力</button>
     <button class="toolbtn" id="copyPrev">前日コピー</button>
     <button class="toolbtn" id="exportBtn">保存</button>
     <button class="toolbtn" id="importBtn">復元</button>
@@ -167,7 +170,7 @@
 
   <section class="col">
     <h2>配車フィールド</h2>
-    <div class="proto-note"><b>カード/表</b>切替・<b>かんたん/サクサク</b>操作切替。ドラッグ＝移動（下端で自動スクロール）。<b>↶戻す</b>で取り消し。データは端末に自動保存（<b>保存/復元</b>で別端末へ移動可）。</div>
+    <div class="proto-note"><b>カード/表</b>切替・<b>かんたん/サクサク</b>操作切替。<b>Excel出力</b>で配車表(.xlsx)を書き出し。<b>↶戻す</b>で取り消し。データは端末に自動保存。</div>
     <div class="board" id="board"></div>
     <button class="add" id="addSite">＋ 現場カードを追加</button>
     <div class="hint">日付 ◀ ▶ で別の日へ。<b>前日コピー</b>で前日を複製。表ビューで集合・内容・メモを直接編集できます。</div>
@@ -302,7 +305,6 @@ let filterTag=null;const selected=new Set();
 let searchQuery="", unassignedOnly=false;
 const esc=s=>String(s==null?"":s).replace(/&/g,"&amp;").replace(/"/g,"&quot;").replace(/</g,"&lt;");
 
-// ---- Undo ----
 let undoStack=[];
 function snapshot(){return JSON.stringify({days:state.days,people:state.people,vehicles:state.vehicles,clientMaster:state.clientMaster,siteMaster:state.siteMaster});}
 function pushUndo(){undoStack.push(snapshot());if(undoStack.length>40)undoStack.shift();}
@@ -326,6 +328,40 @@ function toggleMode(){state.mode=state.mode==="pro"?"easy":"pro";selected.clear(
 function toggleView(){state.view=state.view==="table"?"card":"table";closeMenu();render();}
 function exportData(){const blob=new Blob([JSON.stringify(state,null,2)],{type:"application/json"});const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download="rakuraku-haisha-"+currentDate+".json";document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);}
 function importData(file){const r=new FileReader();r.onload=()=>{try{const s=JSON.parse(r.result);if(!s||!s.days||!s.people){alert("対応していないファイルです。");return;}if(!confirm("現在のデータを、読み込んだ内容で置き換えますか？（戻すには初期化）"))return;state=s;if(!state.mode)state.mode="easy";if(!state.view)state.view="card";currentDate=state.currentDate||SEED_DATE;undoStack=[];selected.clear();closeMenu();bindDay();render();}catch(e){alert("読み込みに失敗しました。");}};r.readAsText(file);}
+
+// ---- Excel出力（理想書式：会社・現場は縦結合、メンバー横並びの2行ブロック）----
+function exportXlsx(){
+  if(typeof XLSX==="undefined"){alert("Excelライブラリの読み込み中です。少し待って再度お試しください。");return;}
+  const COLS=12; // A..L
+  const aoa=[], merges=[];
+  let assigned=0; sites.forEach(s=>assigned+=asg[s.id].members.length);
+  // ヘッダ
+  const head=new Array(COLS).fill("");
+  head[0]=dispDate(currentDate); head[2]="現場"; head[3]="人数"; head[4]="メンバー"; head[9]="集合"; head[10]="内容"; head[11]="総員 "+assigned;
+  aoa.push(head);
+  sites.forEach(s=>{
+    const a=asg[s.id];
+    const mem=a.members.map(pid=>byId(people,pid)?.name).filter(Boolean);
+    const veh=a.vehicles.map(vid=>byId(vehicles,vid)?.name).filter(Boolean).join("・");
+    const start=aoa.length;
+    // 行A：会社/現場/車両/集合/内容
+    const rowA=new Array(COLS).fill(""); rowA[0]=s.client; rowA[2]=s.name||""; rowA[4]=veh; rowA[9]=s.time||""; rowA[10]=s.content||""; if(s.note)rowA[11]=s.note;
+    aoa.push(rowA);
+    // メンバー行（5名ずつ）
+    const chunks=[]; for(let i=0;i<mem.length;i+=5)chunks.push(mem.slice(i,i+5));
+    if(!chunks.length)chunks.push([]);
+    chunks.forEach((ch,ci)=>{const row=new Array(COLS).fill(""); if(ci===0)row[3]=a.members.length; ch.forEach((nm,j)=>row[4+j]=nm); aoa.push(row);});
+    const end=aoa.length-1;
+    merges.push({s:{r:start,c:0},e:{r:end,c:1}}); // 会社 A:B 縦結合
+    merges.push({s:{r:start,c:2},e:{r:end,c:2}}); // 現場 C 縦結合
+  });
+  const ws=XLSX.utils.aoa_to_sheet(aoa);
+  ws["!merges"]=merges;
+  ws["!cols"]=[{wch:12},{wch:6},{wch:12},{wch:5},{wch:10},{wch:10},{wch:10},{wch:10},{wch:10},{wch:8},{wch:14},{wch:10}];
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,dispDate(currentDate).replace(/[\\/?*\[\]:]/g,"."));
+  XLSX.writeFile(wb,"haisha-"+currentDate+".xlsx");
+}
 
 const byId=(arr,id)=>arr.find(x=>x.id===id);
 const $=id=>document.getElementById(id);
@@ -597,7 +633,6 @@ function applyDrop(d,target){
   render();
 }
 
-// 表のセル編集
 $("board").addEventListener("change",e=>{const i=e.target.closest(".cellin");if(!i)return;const s=byId(sites,i.dataset.site);if(!s)return;pushUndo();s[i.dataset.edit]=i.value;save();$("undoBtn").disabled=false;});
 
 let needVal=3, capClient="", capSite="";
@@ -635,7 +670,6 @@ $("siteOk").addEventListener("click",()=>{
   closeSiteModal();render();
 });
 
-// 人員追加モーダル
 let pTagSel=new Set();
 function openPersonModal(){closeMenu();$("pName").value="";pTagSel.clear();document.querySelectorAll("#pTags .ptag").forEach(b=>b.classList.remove("on"));$("personModal").classList.remove("hidden");setTimeout(()=>$("pName").focus(),50);}
 $("pTags").addEventListener("click",e=>{const b=e.target.closest(".ptag");if(!b)return;const t=b.dataset.tag;if(pTagSel.has(t)){pTagSel.delete(t);b.classList.remove("on");}else{pTagSel.add(t);b.classList.add("on");}});
@@ -643,18 +677,17 @@ $("pCancel").addEventListener("click",()=>$("personModal").classList.add("hidden
 $("personModal").addEventListener("click",e=>{if(e.target.id==="personModal")$("personModal").classList.add("hidden");});
 $("pOk").addEventListener("click",()=>{const name=$("pName").value.trim();if(!name){alert("名前を入力してください");return;}pushUndo();people.push({id:"p"+Date.now(),name,tags:[...pTagSel]});$("personModal").classList.add("hidden");render();});
 
-// 車両追加モーダル
 function openVehModal(){closeMenu();$("vName").value="";$("vehModal").classList.remove("hidden");setTimeout(()=>$("vName").focus(),50);}
 $("vCancel").addEventListener("click",()=>$("vehModal").classList.add("hidden"));
 $("vehModal").addEventListener("click",e=>{if(e.target.id==="vehModal")$("vehModal").classList.add("hidden");});
 $("vOk").addEventListener("click",()=>{const name=$("vName").value.trim();if(!name){alert("車両名を入力してください");return;}pushUndo();vehicles.push({id:"v"+Date.now(),name});$("vehModal").classList.add("hidden");render();});
 
-// ヘッダ操作
 $("prevDay").addEventListener("click",()=>shiftDate(-1));
 $("nextDay").addEventListener("click",()=>shiftDate(1));
 $("undoBtn").addEventListener("click",undo);
 $("viewBtn").addEventListener("click",toggleView);
 $("modeBtn").addEventListener("click",toggleMode);
+$("excelBtn").addEventListener("click",exportXlsx);
 $("copyPrev").addEventListener("click",copyPrev);
 $("exportBtn").addEventListener("click",exportData);
 $("importBtn").addEventListener("click",()=>$("importFile").click());
