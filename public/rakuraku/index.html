@@ -175,7 +175,7 @@
 
   <section class="col">
     <h2>配車フィールド</h2>
-    <div class="proto-note">張り出しは<b>Excel出力</b>から（会社→現場→車→作業員2列を大きく）。<b>文字:大/特大</b>で人名拡大。<b>カード/表</b>切替・<b>↶戻す</b>。自動保存。</div>
+    <div class="proto-note">張り出しは<b>Excel出力</b>から（会社→現場→車→作業員5列を大きく・6名以上で2段）。<b>文字:大/特大</b>で人名拡大。<b>カード/表</b>切替・<b>↶戻す</b>。自動保存。</div>
     <div class="board" id="board"></div>
     <button class="add" id="addSite">＋ 現場カードを追加</button>
     <div class="hint">日付 ◀ ▶ で別の日へ。<b>前日コピー</b>で前日を複製。表ビューで集合・内容・メモを直接編集できます。</div>
@@ -337,12 +337,13 @@ function applyFs(){document.body.dataset.fs=state.fontScale;$("fsBtn").textConte
 function exportData(){const blob=new Blob([JSON.stringify(state,null,2)],{type:"application/json"});const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download="rakuraku-haisha-"+currentDate+".json";document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);}
 function importData(file){const r=new FileReader();r.onload=()=>{try{const s=JSON.parse(r.result);if(!s||!s.days||!s.people){alert("対応していないファイルです。");return;}if(!confirm("現在のデータを、読み込んだ内容で置き換えますか？（戻すには初期化）"))return;state=s;if(!state.mode)state.mode="easy";if(!state.view)state.view="card";if(!state.fontScale)state.fontScale="s";currentDate=state.currentDate||SEED_DATE;undoStack=[];selected.clear();closeMenu();bindDay();applyFs();render();}catch(e){alert("読み込みに失敗しました。");}};r.readAsText(file);}
 
-// ---- Excel出力（会社→現場→車→作業員2列(大)→集合/内容/メモ）----
+// ---- Excel出力（会社→現場→車→作業員5列(大/折返し)→集合/内容/メモ）----
 async function exportXlsx(){
   if(typeof ExcelJS==="undefined"){alert("Excelライブラリの読み込み中です。少し待って再度お試しください。");return;}
   const wb=new ExcelJS.Workbook();
   const ws=wb.addWorksheet(dispDate(currentDate).replace(/[\\/?*\[\]:]/g,"."));
-  ws.columns=[{width:14},{width:12},{width:12},{width:16},{width:16},{width:8},{width:16},{width:12}].map(o=>o); // A会社 B現場 C車 D作業員1 E作業員2 F集合 G内容 H メモ
+  // A会社 B現場 C車 D-H作業員(5列) I集合 J内容 Kメモ
+  ws.columns=[{width:14},{width:12},{width:12},{width:13},{width:13},{width:13},{width:13},{width:13},{width:8},{width:16},{width:12}];
   const thin={style:"thin",color:{argb:"FF777777"}};
   const bd={top:thin,left:thin,bottom:thin,right:thin};
   const C=(r,c)=>ws.getCell(r,c);
@@ -350,31 +351,32 @@ async function exportXlsx(){
   const rest=people.filter(p=>/\(休\)/.test(p.name)).map(p=>p.name.replace("(休)",""));
   const hosp=people.filter(p=>/\(入院\)/.test(p.name)).map(p=>p.name.replace("(入院)",""));
   const memFs = state.fontScale==="xl"?26:state.fontScale==="l"?20:16; // 作業員名サイズ
+  const PER=5; // 作業員は横5列。6名以上→2段、11名以上→3段…と折り返す
   // ヘッダ（1行）
   C(1,1).value=dispDate(currentDate)+"  総員"+people.length+"名";
   C(1,2).value="現場"; C(1,3).value="車";
-  ws.mergeCells(1,4,1,5); C(1,4).value="作業員";
-  C(1,6).value="集合"; C(1,7).value="内容"; C(1,8).value="メモ";
-  for(let c=1;c<=8;c++){C(1,c).font={bold:true};C(1,c).alignment={vertical:"middle",horizontal:"center"};}
+  ws.mergeCells(1,4,1,8); C(1,4).value="作業員";
+  C(1,9).value="集合"; C(1,10).value="内容"; C(1,11).value="メモ";
+  for(let c=1;c<=11;c++){C(1,c).font={bold:true};C(1,c).alignment={vertical:"middle",horizontal:"center"};}
   let r=2;
   sites.forEach(s=>{
     const a=asg[s.id];
     const mem=a.members.map(pid=>byId(people,pid)?.name).filter(Boolean);
     const veh=a.vehicles.map(vid=>byId(vehicles,vid)?.name).filter(Boolean);
-    const rows=Math.max(1, veh.length, Math.ceil(mem.length/2));
+    const rows=Math.max(1, veh.length, Math.ceil(mem.length/PER));
     const start=r, end=r+rows-1;
     ws.mergeCells(start,1,end,1); C(start,1).value=s.client; C(start,1).font={bold:true,size:13}; C(start,1).alignment={vertical:"middle",horizontal:"center",wrapText:true};
     ws.mergeCells(start,2,end,2); C(start,2).value=s.name||""; C(start,2).alignment={vertical:"middle",horizontal:"center",wrapText:true};
     veh.forEach((vn,i)=>{const cell=C(start+i,3);cell.value=vn;cell.alignment={vertical:"middle",horizontal:"center"};});
-    mem.forEach((nm,i)=>{const rr=start+Math.floor(i/2); const cc=4+(i%2); const cell=C(rr,cc); cell.value=nm; cell.font={size:memFs,bold:true}; cell.alignment={vertical:"middle",horizontal:"center"};});
-    ws.mergeCells(start,6,end,6); C(start,6).value=s.time||""; C(start,6).alignment={vertical:"middle",horizontal:"center"};
-    ws.mergeCells(start,7,end,7); C(start,7).value=s.content||""; C(start,7).alignment={vertical:"middle",wrapText:true};
-    ws.mergeCells(start,8,end,8); C(start,8).value=s.note||""; C(start,8).alignment={vertical:"middle",wrapText:true};
+    mem.forEach((nm,i)=>{const rr=start+Math.floor(i/PER); const cc=4+(i%PER); const cell=C(rr,cc); cell.value=nm; cell.font={size:memFs,bold:true}; cell.alignment={vertical:"middle",horizontal:"center"};});
+    ws.mergeCells(start,9,end,9); C(start,9).value=s.time||""; C(start,9).alignment={vertical:"middle",horizontal:"center"};
+    ws.mergeCells(start,10,end,10); C(start,10).value=s.content||""; C(start,10).alignment={vertical:"middle",wrapText:true};
+    ws.mergeCells(start,11,end,11); C(start,11).value=s.note||""; C(start,11).alignment={vertical:"middle",wrapText:true};
     for(let rr=start;rr<=end;rr++)ws.getRow(rr).height=Math.round(memFs*1.7);
     r=end+1;
   });
   const lastGrid=r-1;
-  for(let rr=1;rr<=lastGrid;rr++)for(let cc=1;cc<=8;cc++)C(rr,cc).border=bd;
+  for(let rr=1;rr<=lastGrid;rr++)for(let cc=1;cc<=11;cc++)C(rr,cc).border=bd;
   // 最下部：決定数 / 待機 / 休み
   r+=1;
   C(r,1).value="決定数"; C(r,2).value=assigned; C(r,3).value="名"; r++;
