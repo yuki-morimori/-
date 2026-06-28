@@ -1,0 +1,981 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+<meta name="robots" content="noindex" />
+<title>らくらく手配 — 配車表</title>
+<link rel="manifest" href="manifest.webmanifest" />
+<meta name="theme-color" content="#2f6fed" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="default" />
+<meta name="apple-mobile-web-app-title" content="らくらく手配" />
+<link rel="icon" href="icon.svg" type="image/svg+xml" />
+<link rel="apple-touch-icon" href="icon.svg" />
+<script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
+<style>
+  :root{
+    --bg:#f4f6f8; --panel:#fff; --line:#dce1e6; --ink:#1f2933; --sub:#6b7785;
+    --blue:#2f6fed; --green:#1f9d57; --red:#e0413a; --yellow:#e7a400; --orange:#e8772e;
+    --shadow:0 1px 3px rgba(0,0,0,.12);
+    --chip-fs:13px;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;min-height:100%}
+  body{
+    font-family:-apple-system,"Hiragino Kaku Gothic ProN","Noto Sans JP",sans-serif;background:var(--bg);color:var(--ink);
+    -webkit-tap-highlight-color:transparent;-webkit-user-select:none;-ms-user-select:none;user-select:none;-webkit-touch-callout:none;
+  }
+  body[data-fs="l"]{--chip-fs:17px}
+  body[data-fs="xl"]{--chip-fs:22px}
+  input,textarea{-webkit-user-select:text;user-select:text}
+  .pastearea{width:100%;padding:10px;border:1px solid var(--line);border-radius:8px;font-size:14px;font-family:inherit;resize:vertical}
+  svg{width:14px;height:14px;vertical-align:-2px;display:inline-block}
+  header{background:var(--panel);border-bottom:1px solid var(--line);padding:8px 12px;position:sticky;top:0;z-index:20}
+  .htop{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .htop h1{font-size:15px;margin:0;font-weight:700}
+  .navbtn{border:none;background:none;font-size:18px;color:var(--blue);cursor:pointer;padding:0 4px;line-height:1}
+  .date{font-weight:700;color:var(--blue);min-width:74px;text-align:center}
+  .total{font-size:12px;color:var(--sub)}
+  .selinfo{font-size:12px;color:var(--blue);font-weight:700;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+  .selinfo a{cursor:pointer;text-decoration:underline}
+  .selinfo .sbtn{padding:3px 8px;border:1px solid var(--blue);background:#eef4ff;color:var(--blue);border-radius:6px;font-size:12px;font-weight:700;cursor:pointer}
+  .toolbtn{padding:5px 10px;border:1px solid var(--line);background:#fff;border-radius:8px;font-size:12px;cursor:pointer}
+  .toolbtn:disabled{opacity:.4;cursor:default}
+  .toolbtn.mode{border-color:var(--blue);color:var(--blue);font-weight:700}
+  .toolbtn.view{border-color:var(--green);color:var(--green);font-weight:700}
+  .toolbtn.xls{border-color:#1f7a44;color:#1f7a44;font-weight:700}
+  .toolbtn.fs{border-color:#7b54d6;color:#7b54d6;font-weight:700}
+  .toolbtn.install{border-color:var(--green);color:var(--green);font-weight:700}
+  .moreWrap{position:relative}
+  .moremenu{position:absolute;right:0;top:calc(100% + 6px);background:#fff;border:1px solid var(--line);border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.18);z-index:40;min-width:190px;overflow:hidden}
+  .moremenu.hidden{display:none}
+  .moremenu button{display:block;width:100%;text-align:left;padding:12px 14px;border:none;background:#fff;font-size:13px;cursor:pointer;border-bottom:1px solid #f0f3f6}
+  .moremenu button:last-child{border-bottom:none}
+  .moremenu button:active{background:#f0f6ff}
+  .moremenu button.danger{color:var(--red)}
+  .mtabs{display:flex;gap:6px;margin:6px 0 8px;flex-wrap:wrap}
+  .mtab{flex:1;padding:8px;border:1px solid var(--line);background:#fff;border-radius:8px;font-size:13px;cursor:pointer;min-width:64px}
+  .mtab.on{border-color:var(--blue);background:#eef4ff;color:var(--blue);font-weight:700}
+  .mcount{font-size:11px;color:var(--sub);margin:0 0 6px}
+  .mlist{max-height:50vh;overflow:auto;border-top:1px solid #f0f3f6}
+  .mrow{display:flex;gap:6px;align-items:center;padding:7px 0;border-bottom:1px solid #f0f3f6;flex-wrap:wrap}
+  .mrow input{flex:1;min-width:60px;padding:9px;border:1px solid var(--line);border-radius:8px;font-size:15px}
+  .mrow input.rd{flex:.75;color:var(--sub);font-size:13px}
+  .mrow .mdelbtn{padding:9px 11px;border:1px solid var(--line);background:#fff;color:var(--red);border-radius:8px;font-size:13px;cursor:pointer;white-space:nowrap}
+  .mtagrow{display:flex;gap:5px;flex-wrap:wrap;flex-basis:100%}
+  .mtagrow .ptag{padding:6px 10px;font-size:12px}
+  .mempty2{padding:18px 4px;color:var(--sub);font-size:13px;text-align:center}
+  .cdot{width:8px;height:8px;border-radius:50%;display:inline-block;margin-left:1px}
+  .swatches{gap:8px;margin-top:6px}
+  .sw{width:26px;height:26px;border-radius:50%;border:2px solid #fff;box-shadow:0 0 0 1px var(--line);cursor:pointer;padding:0}
+  .sw.on{box-shadow:0 0 0 2px var(--ink)}
+  .presence{margin-left:auto;display:flex;gap:4px;align-items:center;font-size:12px;color:var(--sub)}
+  .ava{width:22px;height:22px;border-radius:50%;background:var(--green);color:#fff;display:grid;place-items:center;font-size:11px;border:2px solid #fff;box-shadow:0 0 0 1px var(--green)}
+  .alertbar{margin-top:6px;font-size:13px;display:flex;gap:12px;flex-wrap:wrap;color:var(--sub)}
+  .alertbar b{color:var(--red)}
+  .ok{color:var(--green)!important}
+  .legend{margin-top:6px;display:flex;gap:6px;flex-wrap:wrap}
+  .legend .tag{cursor:pointer;font-size:12px!important}
+  .legend .tag.off{opacity:.35}
+
+  main{display:grid;grid-template-columns:230px 1fr 180px;gap:10px;padding:10px;align-items:start}
+  @media(max-width:880px){ main{grid-template-columns:1fr} }
+  .col{background:var(--panel);border:1px solid var(--line);border-radius:10px;box-shadow:var(--shadow);min-height:120px}
+  .col h2{font-size:12px;margin:0;padding:8px 10px;border-bottom:1px solid var(--line);color:var(--sub);position:sticky;top:0;background:var(--panel);border-radius:10px 10px 0 0}
+  .poolbar{padding:6px 8px;display:flex;gap:8px;align-items:center;border-bottom:1px solid var(--line);flex-wrap:wrap}
+  .poolbar input[type=text]{flex:1;min-width:90px;padding:6px 8px;border:1px solid var(--line);border-radius:6px;font-size:13px}
+  .poolbar label{font-size:11px;color:var(--sub);display:flex;align-items:center;gap:3px;white-space:nowrap;cursor:pointer}
+  .pool,.vpool{padding:8px;display:flex;flex-wrap:wrap;gap:6px;align-content:flex-start}
+  .pool-empty{padding:8px;color:var(--sub);font-size:12px}
+
+  .chip{display:inline-flex;align-items:center;gap:4px;padding:5px 8px;border-radius:999px;background:#fff;border:2px solid #9aa5b1;font-size:var(--chip-fs);font-weight:600;cursor:pointer;touch-action:none;white-space:nowrap;line-height:1;-webkit-touch-callout:none}
+  .bdg{display:inline-flex}
+  .chip.placed{opacity:.4}
+  .chip.dim{opacity:.18}
+  .chip.sel{box-shadow:0 0 0 2px var(--blue), 0 0 0 4px rgba(47,111,237,.25);}
+  .chip[data-border="blue"]{border-color:var(--blue)}
+  .chip[data-border="yellow"]{border-color:var(--yellow);background:#fff8e6}
+  .chip[data-border="orange"]{border-color:var(--orange);background:#fff3ea}
+  .chip.veh{border-color:#5b6673;background:#eef1f4;color:#3a444f}
+  .chip.dragging{opacity:.45}
+  .floating{position:fixed;left:0;top:0;z-index:1000;pointer-events:none;will-change:transform;box-shadow:0 6px 18px rgba(0,0,0,.28)}
+  .gcount{background:var(--blue);color:#fff;border-radius:999px;padding:1px 6px;margin-left:4px;font-size:11px}
+
+  .board{padding:10px;display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:10px}
+  .board-table{padding:10px;overflow-x:auto}
+  .card{border:1px solid var(--line);border-radius:10px;overflow:hidden;background:#fff;touch-action:pan-y}
+  .card.drop-hi{outline:2px dashed var(--blue);outline-offset:-2px}
+  .card h3{margin:0;padding:7px 9px;font-size:13px;background:#f0f3f7;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+  .card h3 .title{font-weight:700}
+  .card h3 .chip.veh{font-size:11px;padding:3px 7px;font-weight:600}
+  .card .meta{padding:5px 9px;font-size:11px;color:var(--sub);border-bottom:1px dashed var(--line)}
+  .count{margin-left:auto;font-size:12px;font-weight:700;color:var(--green)}
+  .count.short{color:var(--red)}
+  .slots{padding:8px;display:flex;flex-wrap:wrap;gap:6px;min-height:40px}
+  .warn{margin:0 9px 8px;font-size:11px;color:var(--red);font-weight:700}
+  .empty-slot{font-size:11px;color:var(--red)}
+  .empty-day{padding:24px;text-align:center;color:var(--sub);font-size:13px}
+  .pool.drop-hi,.vpool.drop-hi{outline:2px dashed var(--blue);outline-offset:-4px}
+
+  .dtable{border-collapse:collapse;width:100%;font-size:12px;background:#fff}
+  .dtable th,.dtable td{border:1px solid var(--line);padding:5px 6px;vertical-align:top;text-align:left}
+  .dtable th{background:#f0f3f7;color:var(--sub);font-size:11px;white-space:nowrap;position:sticky;top:0;z-index:1}
+  .dtable td.c-site{white-space:nowrap;font-weight:700;position:sticky;left:0;background:#fff;z-index:1}
+  .dtable th:first-child{position:sticky;left:0;z-index:3;background:#f0f3f7}
+  .dtable td.c-mem .chip{margin:2px}
+  .dtable .cnt{font-weight:700;color:var(--green);margin-right:4px;white-space:nowrap}
+  .dtable .cnt.short{color:var(--red)}
+  .dtable td.c-mem{min-width:170px}
+  .dtable .cellin{width:100%;min-width:54px;border:1px solid transparent;background:transparent;font-size:12px;padding:3px 4px;border-radius:4px;font-family:inherit}
+  .dtable .cellin:focus{border-color:var(--blue);background:#fff;outline:none}
+  .dtable tr.drop-hi td{background:#eaf2ff}
+  .dtable td.c-warn,.dtable .c-warn{color:var(--red);font-weight:700;white-space:nowrap;font-size:11px}
+  @media(max-width:700px){ .dtable{font-size:11px} .dtable th,.dtable td{padding:4px} .dtable td.c-mem{min-width:130px} }
+
+  button.add{margin:8px;padding:8px 10px;border:1px dashed #9aa5b1;background:#fff;border-radius:8px;color:var(--sub);font-size:13px;cursor:pointer;width:calc(100% - 16px)}
+  .hint{padding:0 12px 14px;color:var(--sub);font-size:11px;line-height:1.5}
+  .proto-note{margin:0 10px 12px;padding:8px 10px;background:#fffbe6;border:1px solid #f0e0a0;border-radius:8px;font-size:11px;color:#7a6a1f}
+
+  .menu{position:fixed;z-index:200;background:#fff;border:1px solid var(--line);border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.18);min-width:200px;max-width:250px;max-height:320px;overflow-y:auto}
+  .menu.hidden{display:none}
+  .menu .mhead{padding:8px 12px;font-size:12px;color:var(--sub);font-weight:700;border-bottom:1px solid var(--line);background:#f7f9fb;position:sticky;top:0}
+  .menu button{display:block;width:100%;text-align:left;padding:12px;border:none;background:#fff;font-size:14px;cursor:pointer;border-bottom:1px solid #f0f3f6}
+  .menu button:active{background:#f0f6ff}
+  .menu button.mdel{color:var(--red);font-weight:700}
+  .menu .mempty{padding:12px;color:var(--sub);font-size:13px}
+
+  .modal{position:fixed;inset:0;background:rgba(0,0,0,.4);display:flex;align-items:flex-end;justify-content:center;z-index:100}
+  .modal.hidden{display:none}
+  .sheet{background:#fff;width:100%;max-width:460px;border-radius:14px 14px 0 0;padding:16px;max-height:88vh;overflow:auto}
+  @media(min-width:560px){.modal{align-items:center}.sheet{border-radius:14px}}
+  .sheet h3{margin:0 0 4px;font-size:16px}
+  .sheet label{display:block;font-size:12px;color:var(--sub);margin:12px 0 4px;font-weight:700}
+  .sheet input{width:100%;padding:10px;border:1px solid var(--line);border-radius:8px;font-size:16px}
+  .ptags{display:flex;gap:8px;flex-wrap:wrap}
+  .ptag{padding:8px 12px;border:1px solid var(--line);border-radius:999px;background:#fff;font-size:13px;cursor:pointer}
+  .ptag.on{border-color:var(--blue);background:#eef4ff;color:var(--blue);font-weight:700}
+  .sug{border:1px solid var(--line);border-top:none;border-radius:0 0 8px 8px;max-height:170px;overflow:auto}
+  .sug:empty{display:none}
+  .sug div{padding:9px 10px;font-size:14px;cursor:pointer;border-top:1px solid #eef1f4}
+  .sug div .rb{color:var(--sub);font-size:11px;margin-left:6px}
+  .sug div.new{color:var(--blue);font-weight:700}
+  .sug div:active{background:#f0f6ff}
+  .stepper{display:flex;align-items:center;gap:16px}
+  .stepper button{width:42px;height:42px;border-radius:10px;border:1px solid var(--line);background:#f7f9fb;font-size:22px;cursor:pointer;line-height:1}
+  .stepper span{font-size:22px;font-weight:700;min-width:36px;text-align:center}
+  .actions{display:flex;gap:10px;margin-top:20px}
+  .actions button{flex:1;padding:12px;border-radius:8px;border:1px solid var(--line);background:#fff;font-size:15px;cursor:pointer}
+  .actions .primary{background:var(--blue);color:#fff;border-color:var(--blue);font-weight:700}
+</style>
+</head>
+<body>
+<header>
+  <div class="htop">
+    <h1>らくらく手配</h1>
+    <button class="navbtn" id="prevDay">◀</button>
+    <span class="date" id="dateLbl">—</span>
+    <button class="navbtn" id="nextDay">▶</button>
+    <span class="total" id="total"></span>
+    <span class="selinfo" id="selinfo"></span>
+    <button class="toolbtn fs" id="fsBtn">文字:標準</button>
+    <button class="toolbtn" id="undoBtn">↶ 戻す</button>
+    <button class="toolbtn view" id="viewBtn">表で見る</button>
+    <button class="toolbtn mode" id="modeBtn">かんたん操作</button>
+    <button class="toolbtn xls" id="excelBtn">Excel出力</button>
+    <button class="toolbtn" id="copyPrev">前日コピー</button>
+    <button class="toolbtn install" id="installBtn" style="display:none">📲 ホーム画面に追加</button>
+    <div class="moreWrap">
+      <button class="toolbtn" id="moreBtn">⋯ その他</button>
+      <div class="moremenu hidden" id="moreMenu">
+        <button id="masterBtn">🗂 マスタ管理</button>
+        <button id="exportBtn">💾 保存（バックアップ）</button>
+        <button id="importBtn">📂 復元</button>
+        <button class="danger" id="resetAll">↺ 初期化（サンプルに戻す）</button>
+      </div>
+    </div>
+    <input type="file" id="importFile" accept="application/json" style="display:none">
+    <div class="presence"><span class="ava">山</span><span class="ava" style="background:#7b54d6;box-shadow:0 0 0 1px #7b54d6">佐</span> 編集中</div>
+  </div>
+  <div class="alertbar" id="alertbar"></div>
+  <div class="legend" id="legend"></div>
+</header>
+
+<main>
+  <section class="col">
+    <h2>人員プール</h2>
+    <div class="poolbar">
+      <input type="text" id="poolSearch" placeholder="名前で検索" />
+      <label><input type="checkbox" id="poolUnassigned"> 未配置のみ</label>
+    </div>
+    <div class="pool" id="pool" data-drop="pool"></div>
+    <button class="add" id="addPerson">＋ 人員を追加</button>
+  </section>
+
+  <section class="col">
+    <h2>配車フィールド</h2>
+    <div class="proto-note">張り出しは<b>Excel出力</b>から（会社→現場→車→作業員5列を大きく・6名以上で2段）。<b>文字:大/特大</b>で人名拡大。<b>カード/表</b>切替・<b>↶戻す</b>。自動保存。</div>
+    <div class="board" id="board"></div>
+    <button class="add" id="addSite">＋ 現場カードを追加</button>
+    <div class="hint">日付 ◀ ▶ で別の日へ。<b>前日コピー</b>で前日を複製。表ビューで集合・内容・メモを直接編集できます。マスタの整理・Excelからの一括取り込みは「⋯ その他 → マスタ管理」から。</div>
+  </section>
+
+  <section class="col">
+    <h2>車両プール</h2>
+    <div class="vpool" id="vpool" data-drop="vpool"></div>
+    <button class="add" id="addVeh">＋ 車両を追加</button>
+  </section>
+</main>
+
+<div class="menu hidden" id="menu"></div>
+
+<div class="modal hidden" id="siteModal">
+  <div class="sheet">
+    <h3>現場を追加</h3>
+    <label>取引先（会社名）— 読み（かな）でも検索できます</label>
+    <input id="fClient" autocomplete="off" placeholder="例: た → 高城総業" />
+    <div class="sug" id="clientSug"></div>
+    <label>現場名 — 下の過去一覧から選ぶ／新規入力</label>
+    <input id="fSite" autocomplete="off" placeholder="例: み → 南青山2" />
+    <div class="sug" id="siteSug"></div>
+    <label>必要人数</label>
+    <div class="stepper"><button id="needMinus">−</button><span id="needVal">3</span><button id="needPlus">＋</button></div>
+    <div class="actions"><button id="siteCancel">キャンセル</button><button id="siteOk" class="primary">追加する</button></div>
+  </div>
+</div>
+
+<div class="modal hidden" id="personModal">
+  <div class="sheet">
+    <h3>人員を追加</h3>
+    <label>名前</label>
+    <input id="pName" autocomplete="off" placeholder="例: 田中" />
+    <label>属性（タップで選択・複数可）</label>
+    <div class="ptags" id="pTags"></div>
+    <div class="actions"><button id="pCancel">キャンセル</button><button id="pOk" class="primary">追加する</button></div>
+  </div>
+</div>
+
+<div class="modal hidden" id="vehModal">
+  <div class="sheet">
+    <h3>車両を追加</h3>
+    <label>車両名（名前だけでOK）</label>
+    <input id="vName" autocomplete="off" placeholder="例: 1号車 / プリウス" />
+    <div class="actions"><button id="vCancel">キャンセル</button><button id="vOk" class="primary">追加する</button></div>
+  </div>
+</div>
+
+<div class="modal hidden" id="masterModal">
+  <div class="sheet">
+    <h3>マスタ管理</h3>
+    <div class="mtabs" id="mTabs">
+      <button class="mtab on" data-mt="client">取引先</button>
+      <button class="mtab" data-mt="site">現場</button>
+      <button class="mtab" data-mt="person">人員</button>
+      <button class="mtab" data-mt="tag">タグ</button>
+      <button class="mtab" data-mt="vehicle">車両</button>
+    </div>
+    <div id="mBody"></div>
+    <button class="add" id="mPaste" style="width:100%;margin:12px 0 0;border-color:var(--blue);color:var(--blue)">📋 Excelから貼り付けで一括追加</button>
+    <button class="add" id="mAdd" style="width:100%;margin:6px 0 0">＋ 1件ずつ追加</button>
+    <div class="actions"><button id="mClose" class="primary">閉じる</button></div>
+  </div>
+</div>
+
+<div class="modal hidden" id="pasteModal">
+  <div class="sheet">
+    <h3 id="pasteTitle">貼り付けで一括追加</h3>
+    <div class="mcount" id="pasteHint"></div>
+    <textarea id="pasteArea" class="pastearea" rows="9" placeholder="Excelの列を選択してコピー → ここに貼り付け（Ctrl/⌘+V）"></textarea>
+    <div class="mcount" id="pastePreview"></div>
+    <div class="actions"><button id="pasteCancel">キャンセル</button><button id="pasteOk" class="primary">取り込む</button></div>
+  </div>
+</div>
+
+<script>
+const SVG = {
+  truck:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 18V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v11a1 1 0 0 0 1 1h2"/><path d="M15 18H9"/><path d="M19 18h2a1 1 0 0 0 1-1v-3.65a1 1 0 0 0-.22-.62l-3.48-4.35A1 1 0 0 0 17.52 8H14"/><circle cx="7" cy="18" r="2"/><circle cx="17" cy="18" r="2"/></svg>`,
+  car:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2"/><circle cx="7" cy="17" r="2"/><path d="M9 17h6"/><circle cx="17" cy="17" r="2"/></svg>`,
+  star:`<svg viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>`,
+  helper:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" x2="19" y1="8" y2="14"/><line x1="22" x2="16" y1="11" y2="11"/></svg>`,
+};
+const TAGS = {
+  driver:{label:"運転可",svg:SVG.car,border:"blue",color:"var(--blue)"},
+  newbie:{label:"新人",svg:"",border:"yellow",color:"var(--yellow)"},
+  leader:{label:"リーダー",svg:SVG.star,border:"blue",color:"var(--blue)"},
+  helper:{label:"応援",svg:SVG.helper,border:"orange",color:"var(--orange)"},
+};
+const PALETTE=["#2f6fed","#1f9d57","#e0413a","#e7a400","#e8772e","#7b54d6","#0e9aa7","#d6457b","#5b6673"];
+function defaultMode(){return ((window.matchMedia&&window.matchMedia("(pointer:fine)").matches)||window.innerWidth>=1024)?"pro":"easy";}
+function defaultCustomTags(){return [{id:"c1",label:"タグ1",color:"#0e9aa7"},{id:"c2",label:"タグ2",color:"#d6457b"},{id:"c3",label:"タグ3",color:"#7b54d6"}];}
+const READING={
+ "大崎建設":"おおさきけんせつ","高城総業":"たかぎそうぎょう","大和栄建":"だいわえいけん","クラレ":"くられ",
+ "高鋼工業":"こうこうこうぎょう","カマブ":"かまぶ","松振組":"まつふりぐみ","旺城資材":"おうじょうしざい",
+ "鈴田工作所":"すずたこうさくしょ","橘建設":"たちばなけんせつ","宮澤建設":"みやざわけんせつ","戸沢":"とざわ","JFE":"じぇいえふいー","(株)BONUS":"ぼーなす",
+ "豊岡":"とよおか","三軒茶屋":"さんげんぢゃや","河之島":"かわのしま","小寺":"こでら","豊田":"とよた",
+ "南青山2":"みなみあおやま","青山":"あおやま","富洋":"ふよう","神橋":"かんばし","千石":"せんごく",
+ "大島田":"おおしまだ","池辺町":"いこのべちょう","行田":"ぎょうだ","さくら工業":"さくらこうぎょう","城端":"じょうはな",
+};
+const SEED = [
+ {c:"大崎建設",n:"",v:"7405",t:"4:50",w:"土木",m:[["坂元",1],["斉藤",0],["大道",0]]},
+ {c:"高城総業",n:"豊岡",v:"7406",t:"5:15",w:"解体",send:1,m:[["平野",1],["猿田",0],["北林",0],["古谷",0],["大井川",0],["川島",0],["富音",0],["仲登2名",2]]},
+ {c:"高城総業",n:"三軒茶屋",v:"外注車",t:"5:15",w:"解体",send:1,m:[["石川悟",1],["八田",0],["井上雄",0],["井上",0]]},
+ {c:"高城総業",n:"河之島",v:"7404",t:"5:15",w:"解体 GS/CCUS",m:[["木下",1],["柳田",0],["阿部",0],["安藤",0],["寺重",0],["トウケン",2]]},
+ {c:"高城総業",n:"小寺",v:"",t:"5:15",w:"解体",m:[["松元",0]]},
+ {c:"高城総業",n:"豊田",v:"7404",t:"5:15",w:"解体",send:1,m:[["一条",1],["仙叟",0]]},
+ {c:"高城総業",n:"",v:"代車",t:"5:15",w:"解体 名簿",send:1,m:[["岩村",1],["越後谷",0],["笹岡",0],["菅",0]]},
+ {c:"高城総業",n:"南青山2",v:"",t:"5:15",w:"解体 GS",m:[["村中",0]]},
+ {c:"高城総業",n:"青山",v:"4102",t:"5:15",w:"解体 GS/CCUS",m:[["島田",1],["大沢",0],["石川眞",0],["久田",0],["菅原仁",0]]},
+ {c:"大和栄建",n:"富洋",v:"アクア",t:"5:20",w:"廷場",m:[["松給",1],["中宮",0]]},
+ {c:"クラレ",n:"神橋",v:"78-77(外注)",t:"5:30",w:"プラント",m:[["森井",1],["阿久津",0],["船橋2名",2]]},
+ {c:"高鋼工業",n:"千石",v:"5148",t:"5:45",w:"解体 橋",m:[["太田",1],["佐藤文",0],["GJ3名",2]]},
+ {c:"カマブ",n:"大島田",v:"702",t:"5:30",w:"コンクリ打設 GS",note:"早出7:00スタート",m:[["佐藤幸",1],["田代",0]]},
+ {c:"松振組",n:"池辺町",v:"",t:"5:20",w:"コンクリ打設 GS",m:[["佐々木",1],["沢田",0],["GJ2名",2]]},
+ {c:"旺城資材",n:"行田",v:"6059",t:"4:50",w:"除草作業",m:[["吉田",1],["菅原年",0],["大谷",0]]},
+ {c:"鈴田工作所",n:"神橋",v:"5150",t:"5:50",w:"プラント",m:[["本多",1],["水野",0],["庭野",0],["河原崎",0]]},
+ {c:"橘建設",n:"さくら工業",v:"8120ラテラ",t:"6:00",w:"土木",m:[["宇敷",1],["三島",0],["普政",0]]},
+ {c:"宮澤建設",n:"城端",v:"プリウス",t:"6:00",w:"土木 GS/CCUS",m:[["麻生",1],["野林",0],["堀田",0]]},
+ {c:"戸沢",n:"",v:"",t:"",w:"大工",m:[["中野",0]]},
+ {c:"JFE",n:"",v:"自社",t:"",w:"工場",m:[["斉藤(JFE)",1]]},
+ {c:"(株)BONUS",n:"",v:"自社",t:"",w:"清掃",m:[["高山",1]]},
+];
+const OFF=["亀之國","石田","平田","柳原","伊達","橋本","杉山","松岡"];
+const HOSP=["中川"];
+const SEED_DATE="2026-06-05", KEY="rakuraku_state_v1";
+
+function buildSeedState(){
+  const people=[],vehicles=[],clientMaster=[],siteMaster=[],sites=[],asg={};
+  let pid=0,vid=0;const vmap={},cset=new Set(),sset=new Set();
+  SEED.forEach((s,i)=>{
+    const sid="s"+(i+1);
+    sites.push({id:sid,client:s.c,name:s.n,time:s.t,content:s.w,need:s.m.length,needVehicle:!!s.v,note:s.note||"",send:s.send});
+    asg[sid]={members:[],vehicles:[]};
+    s.m.forEach(([nm,tg])=>{const id="p"+(++pid);people.push({id,name:nm,tags:tg===1?["driver"]:tg===2?["helper"]:[]});asg[sid].members.push(id);});
+    if(s.v){if(!vmap[s.v]){vmap[s.v]={id:"v"+(++vid),name:s.v};vehicles.push(vmap[s.v]);}asg[sid].vehicles.push(vmap[s.v].id);}
+    if(!cset.has(s.c)){cset.add(s.c);clientMaster.push({name:s.c,reading:READING[s.c]||""});}
+    if(s.n&&!sset.has(s.n)){sset.add(s.n);siteMaster.push({name:s.n,reading:READING[s.n]||""});}
+  });
+  OFF.forEach(nm=>people.push({id:"p"+(++pid),name:nm+"(休)",tags:[]}));
+  HOSP.forEach(nm=>people.push({id:"p"+(++pid),name:nm+"(入院)",tags:[]}));
+  return {people,vehicles,clientMaster,siteMaster,customTags:defaultCustomTags(),days:{[SEED_DATE]:{sites,asg}},currentDate:SEED_DATE,mode:defaultMode(),modeManual:false,view:"card",fontScale:"s"};
+}
+
+function loadState(){try{const r=localStorage.getItem(KEY);if(!r)return null;const s=JSON.parse(r);if(!s||!s.days||!s.people)return null;return s;}catch(e){return null;}}
+let state=loadState()||buildSeedState();
+if(!state.customTags)state.customTags=defaultCustomTags();
+if(typeof state.modeManual!=="boolean")state.modeManual=false;
+if(!state.modeManual||!state.mode)state.mode=defaultMode();
+if(!state.view)state.view="card";
+if(!state.fontScale)state.fontScale="s";
+let currentDate=state.currentDate||SEED_DATE;
+let people,vehicles,clientMaster,siteMaster,customTags,sites,asg;
+function ensureDay(d){if(!state.days[d])state.days[d]={sites:[],asg:{}};}
+function bindDay(){ensureDay(currentDate);people=state.people;vehicles=state.vehicles;clientMaster=state.clientMaster;siteMaster=state.siteMaster;customTags=state.customTags;sites=state.days[currentDate].sites;asg=state.days[currentDate].asg;}
+function save(){state.currentDate=currentDate;try{localStorage.setItem(KEY,JSON.stringify(state));}catch(e){}}
+bindDay();
+
+let filterTag=null;const selected=new Set();
+let searchQuery="", unassignedOnly=false;
+const esc=s=>String(s==null?"":s).replace(/&/g,"&amp;").replace(/"/g,"&quot;").replace(/</g,"&lt;");
+
+let undoStack=[];
+function snapshot(){return JSON.stringify({days:state.days,people:state.people,vehicles:state.vehicles,clientMaster:state.clientMaster,siteMaster:state.siteMaster,customTags:state.customTags});}
+function pushUndo(){undoStack.push(snapshot());if(undoStack.length>40)undoStack.shift();}
+function undo(){if(!undoStack.length)return;const s=JSON.parse(undoStack.pop());state.days=s.days;state.people=s.people;state.vehicles=s.vehicles;state.clientMaster=s.clientMaster;state.siteMaster=s.siteMaster;if(s.customTags)state.customTags=s.customTags;selected.clear();closeMenu();bindDay();render();}
+
+const WD=["日","月","火","水","木","金","土"];
+function fmt(dt){return dt.getFullYear()+"-"+String(dt.getMonth()+1).padStart(2,"0")+"-"+String(dt.getDate()).padStart(2,"0");}
+function dispDate(s){const dt=new Date(s+"T00:00:00");return (dt.getMonth()+1)+"/"+dt.getDate()+"("+WD[dt.getDay()]+")";}
+function shiftDate(delta){const dt=new Date(currentDate+"T00:00:00");dt.setDate(dt.getDate()+delta);currentDate=fmt(dt);selected.clear();closeMenu();bindDay();render();}
+function copyPrev(){
+  const dt=new Date(currentDate+"T00:00:00");dt.setDate(dt.getDate()-1);const prev=fmt(dt);
+  const pd=state.days[prev];
+  if(!pd||!pd.sites.length){alert("前日（"+dispDate(prev)+"）の配車データがありません。");return;}
+  if(sites.length&&!confirm(dispDate(currentDate)+"の配車を、前日（"+dispDate(prev)+"）の内容で置き換えますか？"))return;
+  pushUndo();
+  state.days[currentDate]=JSON.parse(JSON.stringify({sites:pd.sites,asg:pd.asg}));
+  selected.clear();bindDay();render();
+}
+function resetAll(){if(!confirm("すべての配車データを初期状態（6/5サンプル）に戻しますか？"))return;const mode=state.mode,view=state.view,fs=state.fontScale;state=buildSeedState();state.mode=mode;state.view=view;state.fontScale=fs;currentDate=SEED_DATE;selected.clear();undoStack=[];closeMenu();bindDay();render();}
+function toggleMode(){state.mode=state.mode==="pro"?"easy":"pro";state.modeManual=true;selected.clear();closeMenu();render();}
+function toggleView(){state.view=state.view==="table"?"card":"table";closeMenu();render();}
+function toggleFs(){const order=["s","l","xl"];const i=order.indexOf(state.fontScale);state.fontScale=order[(i+1)%order.length];applyFs();save();}
+function applyFs(){document.body.dataset.fs=state.fontScale;$("fsBtn").textContent="文字:"+(state.fontScale==="s"?"標準":state.fontScale==="l"?"大":"特大");}
+function exportData(){const blob=new Blob([JSON.stringify(state,null,2)],{type:"application/json"});const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download="rakuraku-haisha-"+currentDate+".json";document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);}
+function importData(file){const r=new FileReader();r.onload=()=>{try{const s=JSON.parse(r.result);if(!s||!s.days||!s.people){alert("対応していないファイルです。");return;}if(!confirm("現在のデータを、読み込んだ内容で置き換えますか？（戻すには初期化）"))return;state=s;if(!state.customTags)state.customTags=defaultCustomTags();if(typeof state.modeManual!=="boolean")state.modeManual=false;if(!state.mode)state.mode=defaultMode();if(!state.view)state.view="card";if(!state.fontScale)state.fontScale="s";currentDate=state.currentDate||SEED_DATE;undoStack=[];selected.clear();closeMenu();bindDay();applyFs();render();}catch(e){alert("読み込みに失敗しました。");}};r.readAsText(file);}
+
+// ---- Excel出力（会社→現場→車→作業員5列(大/折返し)→集合/内容/メモ）----
+async function exportXlsx(){
+  if(typeof ExcelJS==="undefined"){alert("Excelライブラリの読み込み中です。少し待って再度お試しください。");return;}
+  const wb=new ExcelJS.Workbook();
+  const ws=wb.addWorksheet(dispDate(currentDate).replace(/[\\/?*\[\]:]/g,"."));
+  // A会社 B現場 C車 D-H作業員(5列) I集合 J内容 Kメモ
+  ws.columns=[{width:14},{width:12},{width:12},{width:13},{width:13},{width:13},{width:13},{width:13},{width:8},{width:16},{width:12}];
+  const thin={style:"thin",color:{argb:"FF777777"}};
+  const bd={top:thin,left:thin,bottom:thin,right:thin};
+  const C=(r,c)=>ws.getCell(r,c);
+  let assigned=0; sites.forEach(s=>assigned+=asg[s.id].members.length);
+  const rest=people.filter(p=>/\(休\)/.test(p.name)).map(p=>p.name.replace("(休)",""));
+  const hosp=people.filter(p=>/\(入院\)/.test(p.name)).map(p=>p.name.replace("(入院)",""));
+  const memFs = state.fontScale==="xl"?26:state.fontScale==="l"?20:16; // 作業員名サイズ
+  const PER=5; // 作業員は横5列。6名以上→2段、11名以上→3段…と折り返す
+  // ヘッダ（1行）
+  C(1,1).value=dispDate(currentDate)+"  総員"+people.length+"名";
+  C(1,2).value="現場"; C(1,3).value="車";
+  ws.mergeCells(1,4,1,8); C(1,4).value="作業員";
+  C(1,9).value="集合"; C(1,10).value="内容"; C(1,11).value="メモ";
+  for(let c=1;c<=11;c++){C(1,c).font={bold:true};C(1,c).alignment={vertical:"middle",horizontal:"center"};}
+  let r=2;
+  sites.forEach(s=>{
+    const a=asg[s.id];
+    const mem=a.members.map(pid=>byId(people,pid)?.name).filter(Boolean);
+    const veh=a.vehicles.map(vid=>byId(vehicles,vid)?.name).filter(Boolean);
+    const rows=Math.max(1, veh.length, Math.ceil(mem.length/PER));
+    const start=r, end=r+rows-1;
+    ws.mergeCells(start,1,end,1); C(start,1).value=s.client; C(start,1).font={bold:true,size:13}; C(start,1).alignment={vertical:"middle",horizontal:"center",wrapText:true};
+    ws.mergeCells(start,2,end,2); C(start,2).value=s.name||""; C(start,2).alignment={vertical:"middle",horizontal:"center",wrapText:true};
+    veh.forEach((vn,i)=>{const cell=C(start+i,3);cell.value=vn;cell.alignment={vertical:"middle",horizontal:"center"};});
+    mem.forEach((nm,i)=>{const rr=start+Math.floor(i/PER); const cc=4+(i%PER); const cell=C(rr,cc); cell.value=nm; cell.font={size:memFs,bold:true}; cell.alignment={vertical:"middle",horizontal:"center"};});
+    ws.mergeCells(start,9,end,9); C(start,9).value=s.time||""; C(start,9).alignment={vertical:"middle",horizontal:"center"};
+    ws.mergeCells(start,10,end,10); C(start,10).value=s.content||""; C(start,10).alignment={vertical:"middle",wrapText:true};
+    ws.mergeCells(start,11,end,11); C(start,11).value=s.note||""; C(start,11).alignment={vertical:"middle",wrapText:true};
+    for(let rr=start;rr<=end;rr++)ws.getRow(rr).height=Math.round(memFs*1.7);
+    r=end+1;
+  });
+  const lastGrid=r-1;
+  for(let rr=1;rr<=lastGrid;rr++)for(let cc=1;cc<=11;cc++)C(rr,cc).border=bd;
+  // 最下部：決定数 / 待機 / 休み
+  r+=1;
+  C(r,1).value="決定数"; C(r,2).value=assigned; C(r,3).value="名"; r++;
+  C(r,1).value="待機"; C(r,2).value=Math.max(0,people.length-assigned-rest.length-hosp.length); C(r,3).value="名"; r++;
+  C(r,1).value="休み"; C(r,2).value=rest.length; C(r,3).value="名"; r++;
+  if(rest.length){ C(r,1).value="休: "+rest.join("・"); r++; }
+  if(hosp.length){ C(r,1).value="入院: "+hosp.join("・"); r++; }
+  const buf=await wb.xlsx.writeBuffer();
+  const blob=new Blob([buf],{type:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"});
+  const url=URL.createObjectURL(blob);const ael=document.createElement("a");ael.href=url;ael.download="haisha-"+currentDate+".xlsx";document.body.appendChild(ael);ael.click();ael.remove();URL.revokeObjectURL(url);
+}
+
+const byId=(arr,id)=>arr.find(x=>x.id===id);
+const $=id=>document.getElementById(id);
+function personSites(pid){return sites.filter(s=>asg[s.id]?.members.includes(pid));}
+function vehicleSites(vid){return sites.filter(s=>asg[s.id]?.vehicles.includes(vid));}
+function siteHasDriver(sid){return (asg[sid]?.members||[]).some(pid=>byId(people,pid)?.tags.includes("driver"));}
+function activeCustomTags(){return (customTags||[]).filter(c=>c.label&&c.label.trim());}
+function customTagOf(key){return (customTags||[]).find(c=>c.id===key&&c.label&&c.label.trim());}
+function chipStyle(p){
+  if(p.tags.includes("helper"))return {db:"orange"};
+  if(p.tags.includes("newbie"))return {db:"yellow"};
+  if(p.tags.includes("driver")||p.tags.includes("leader"))return {db:"blue"};
+  for(const t of p.tags){const c=customTagOf(t);if(c)return {color:c.color};}
+  return {};
+}
+function badges(p){
+  const built=p.tags.map(t=>(TAGS[t]&&TAGS[t].svg)?`<span class="bdg" style="color:${TAGS[t].color}">${TAGS[t].svg}</span>`:"").join("");
+  const dots=p.tags.map(t=>{const c=customTagOf(t);return c?`<span class="cdot" style="background:${c.color}"></span>`:"";}).join("");
+  return built+dots;
+}
+
+function chipPerson(p,{inPool=false,siteId=null}={}){
+  if(!p)return "";
+  const placed=personSites(p.id).length>0, dup=personSites(p.id).length>1;
+  const dimByFilter=filterTag&&!p.tags.includes(filterTag);
+  const cls=["chip"];if(inPool&&placed)cls.push("placed");if(dimByFilter)cls.push("dim");if(selected.has(p.id))cls.push("sel");
+  const dupMark=(dup&&siteId)?' <span style="color:var(--red)">⚠</span>':'';
+  const st=chipStyle(p);const styleAttr=st.color?` style="border-color:${st.color}"`:"";
+  return `<span class="${cls.join(' ')}" data-border="${st.db||''}"${styleAttr} data-type="person" data-id="${p.id}" data-from="${inPool?'pool':siteId}">${esc(p.name)}${badges(p)}${dupMark}</span>`;
+}
+function chipVehicle(v,{inPool=false,siteId=null}={}){
+  if(!v)return "";
+  const placed=vehicleSites(v.id).length>0;const cls=["chip","veh"];if(inPool&&placed)cls.push("placed");
+  return `<span class="${cls.join(' ')}" data-type="vehicle" data-id="${v.id}" data-from="${inPool?'vpool':siteId}"><span class="bdg">${SVG.truck}</span>${esc(v.name)}</span>`;
+}
+
+function poolPeople(){
+  let l=people;
+  if(unassignedOnly)l=l.filter(p=>personSites(p.id).length===0);
+  if(searchQuery){const q=searchQuery.toLowerCase();l=l.filter(p=>p.name.toLowerCase().includes(q));}
+  return l;
+}
+function renderPool(){
+  const l=poolPeople();
+  $("pool").innerHTML = l.length? l.map(p=>chipPerson(p,{inPool:true})).join("") : `<div class="pool-empty">該当する人がいません</div>`;
+}
+
+function renderCardsHtml(){
+  return sites.map(s=>{
+    const a=asg[s.id]||{members:[],vehicles:[]};
+    const short=a.members.length<s.need;
+    const memberChips=a.members.map(pid=>chipPerson(byId(people,pid),{siteId:s.id})).join("");
+    const vehChips=a.vehicles.map(vid=>chipVehicle(byId(vehicles,vid),{siteId:s.id})).join("");
+    const emptySlots=short?`<span class="empty-slot">＋空き${s.need-a.members.length}（欠員！）</span>`:"";
+    const warns=[];if(a.vehicles.length>0&&!siteHasDriver(s.id))warns.push("⚠ 車両ありなのに運転手なし");
+    const meta=`集合 ${esc(s.time)||"-"} ・${esc(s.content)||"-"}${s.send?" ・送り":""}${s.note?" ・"+esc(s.note):""}`;
+    return `<div class="card" data-drop="${s.id}">
+      <h3><span class="title">${esc(s.client)}${s.name?" / "+esc(s.name):""}</span>${vehChips}<span class="count ${short?'short':''}">${a.members.length}/${s.need}${short?'':' ✓'}</span></h3>
+      <div class="meta">${meta}</div>
+      <div class="slots">${memberChips}${emptySlots}</div>
+      ${warns.map(w=>`<div class="warn">${w}</div>`).join("")}
+    </div>`;
+  }).join("");
+}
+function renderTableHtml(){
+  let h=`<table class="dtable"><thead><tr><th>現場</th><th>車</th><th>集合</th><th>内容</th><th>人員</th><th>メモ</th></tr></thead><tbody>`;
+  h+=sites.map(s=>{
+    const a=asg[s.id]||{members:[],vehicles:[]};
+    const short=a.members.length<s.need;
+    const mem=a.members.map(pid=>chipPerson(byId(people,pid),{siteId:s.id})).join(" ");
+    const veh=a.vehicles.map(vid=>chipVehicle(byId(vehicles,vid),{siteId:s.id})).join(" ");
+    const nodrv=a.vehicles.length>0&&!siteHasDriver(s.id);
+    return `<tr data-drop="${s.id}">
+      <td class="c-site">${esc(s.client)}${s.name?"<br>"+esc(s.name):""}</td>
+      <td>${veh}${nodrv?'<div class="c-warn">運転手なし</div>':''}</td>
+      <td><input class="cellin" data-edit="time" data-site="${s.id}" value="${esc(s.time)}" placeholder="--:--"></td>
+      <td><input class="cellin" data-edit="content" data-site="${s.id}" value="${esc(s.content)}" placeholder="内容"></td>
+      <td class="c-mem"><span class="cnt ${short?'short':''}">${a.members.length}/${s.need}</span>${mem}${short?' <span class="empty-slot">欠員</span>':''}</td>
+      <td><input class="cellin" data-edit="note" data-site="${s.id}" value="${esc(s.note)}" placeholder="メモ"></td>
+    </tr>`;
+  }).join("");
+  h+=`</tbody></table>`;
+  return h;
+}
+
+function render(){
+  applyFs();
+  $("dateLbl").textContent=dispDate(currentDate);
+  $("modeBtn").textContent = state.mode==="pro"?"サクサク操作":"かんたん操作";
+  $("viewBtn").textContent = state.view==="table"?"カードで見る":"表で見る";
+  $("undoBtn").disabled = undoStack.length===0;
+  const legendTags=[...Object.entries(TAGS).map(([k,t])=>({k,label:t.label,svg:t.svg,color:t.color,border:t.border})),
+    ...activeCustomTags().map(c=>({k:c.id,label:c.label,svg:"",color:c.color,border:""}))];
+  $("legend").innerHTML = legendTags.map(t=>
+    `<span class="chip tag ${filterTag&&filterTag!==t.k?'off':''}" data-border="${t.border}"${t.border?'':` style="border-color:${t.color}"`} data-tag="${t.k}">${t.svg?`<span class="bdg" style="color:${t.color}">${t.svg}</span>`:''}${esc(t.label)}</span>`).join("");
+  renderPool();
+  $("vpool").innerHTML = vehicles.map(v=>chipVehicle(v,{inPool:true})).join("");
+  const board=$("board");
+  board.className = state.view==="table"?"board-table":"board";
+  board.innerHTML = sites.length? (state.view==="table"?renderTableHtml():renderCardsHtml())
+    : `<div class="empty-day">この日の配車はまだありません。<br>「前日コピー」または「＋現場カードを追加」で作成できます。</div>`;
+  let lack=0,dup=new Set(),nodrv=0,assigned=0;
+  sites.forEach(s=>{const a=asg[s.id];assigned+=a.members.length;if(a.members.length<s.need)lack++;if(a.vehicles.length>0&&!siteHasDriver(s.id))nodrv++;});
+  people.forEach(p=>{if(personSites(p.id).length>1)dup.add(p.id);});
+  const parts=[];
+  parts.push(lack?`欠員: <b>${lack}現場</b>`:`<span class="ok">欠員なし</span>`);
+  parts.push(nodrv?`運転手不在: <b>${nodrv}現場</b>`:`<span class="ok">運転手OK</span>`);
+  parts.push(dup.size?`重複配置: <b>${dup.size}名</b>`:`<span class="ok">重複なし</span>`);
+  $("alertbar").innerHTML="アラート ▸ "+parts.join(" / ");
+  $("total").textContent=`配置 ${assigned}名 / ${sites.length}現場`;
+  $("selinfo").innerHTML = selected.size? `${selected.size}名選択 <button class="sbtn" data-sact="move">現場へ移す</button><button class="sbtn" data-sact="pool">プールへ</button><a id="clearsel">解除</a>` : "";
+  save();
+}
+
+document.addEventListener("selectstart",e=>{if(drag||(e.target.closest&&e.target.closest(".chip")))e.preventDefault();});
+document.addEventListener("contextmenu",e=>{if(e.target.closest&&e.target.closest(".chip"))e.preventDefault();});
+
+function setSwipe(el,dx){el.style.transition="none";el.style.transform="translateX("+dx+"px)";el.style.opacity=String(Math.max(.25,1-Math.abs(dx)/320));}
+function snapBack(el){el.style.transition="transform .16s ease, opacity .16s ease";el.style.transform="";el.style.opacity="";}
+function slideOut(el,dir,done){let f=false;const fin=function(){if(f)return;f=true;done();};el.style.transition="transform .18s ease, opacity .18s ease";el.style.transform="translateX("+(dir*520)+"px)";el.style.opacity="0";el.addEventListener("transitionend",fin,{once:true});setTimeout(fin,260);}
+
+let drag=null;
+const LONGPRESS=180, FLICK_DX=70, CARD_FLICK_DX=90, EDGE=90;
+function findDropTarget(x,y){let el=document.elementFromPoint(x,y);while(el&&!el.dataset?.drop)el=el.parentElement;return el?el.dataset.drop:null;}
+function clearHi(){document.querySelectorAll(".drop-hi").forEach(e=>e.classList.remove("drop-hi"));}
+function highlightAt(x,y){clearHi();const t=findDropTarget(x,y);if(t){const n=document.querySelector('[data-drop="'+t+'"]');n&&n.classList.add("drop-hi");}}
+function paintFloat(){if(!drag)return;drag.raf=0;drag.float.style.transform=`translate3d(${drag.fx}px,${drag.fy}px,0) translate(-50%,-50%) scale(1.04)`;}
+function scheduleFloat(){if(drag&&!drag.raf)drag.raf=requestAnimationFrame(paintFloat);}
+function autoScrollTick(){
+  if(!drag){return;}
+  const y=drag.fy,h=window.innerHeight;let v=0;
+  if(y<EDGE)v=-Math.ceil((EDGE-y)/EDGE*18);
+  else if(y>h-EDGE)v=Math.ceil((y-(h-EDGE))/EDGE*18);
+  if(v){window.scrollBy(0,v);highlightAt(drag.fx,drag.fy);}
+  drag.scrollRaf=requestAnimationFrame(autoScrollTick);
+}
+
+document.addEventListener("pointerdown",e=>{
+  if(!$("menu").classList.contains("hidden")&&!(e.target.closest&&e.target.closest("#menu"))&&!(e.target.closest&&e.target.closest(".selinfo")))closeMenu();
+  if(e.target.closest&&(e.target.closest(".modal")||e.target.closest(".cellin")||e.target.closest(".poolbar")))return;
+  const chip=e.target.closest(".chip[data-type]");
+  if(chip&&!chip.classList.contains("tag"))return startChip(e,chip);
+  const card=e.target.closest(".card[data-drop]");
+  if(card)return startCard(e,card);
+});
+
+function startChip(e,chip){
+  e.preventDefault();
+  const type=chip.dataset.type,id=chip.dataset.id,from=chip.dataset.from;
+  const startX=e.clientX,startY=e.clientY;
+  let started=false,swiping=false,decided=false;
+  let timer=setTimeout(beginDrag,LONGPRESS);
+  function beginDrag(){
+    started=true;
+    let ids=[id],group=false;
+    if(type==="person"&&selected.has(id)&&selected.size>1){ids=[...selected];group=true;}
+    const f=chip.cloneNode(true);f.classList.add("floating");f.classList.remove("placed","dim","sel");f.style.transform="";f.style.opacity="";
+    if(group)f.innerHTML+=`<span class="gcount">${ids.length}</span>`;
+    document.body.appendChild(f);chip.classList.add("dragging");
+    drag={type,id,ids,group,from,float:f,fx:startX,fy:startY,raf:0,scrollRaf:0};paintFloat();
+    drag.scrollRaf=requestAnimationFrame(autoScrollTick);
+  }
+  function onMove(ev){
+    if(started){ev.preventDefault();drag.fx=ev.clientX;drag.fy=ev.clientY;scheduleFloat();highlightAt(ev.clientX,ev.clientY);return;}
+    const dx=ev.clientX-startX,dy=ev.clientY-startY;
+    if(swiping){ev.preventDefault();setSwipe(chip,dx);return;}
+    if(!decided&&Math.hypot(dx,dy)>10){decided=true;clearTimeout(timer);if(Math.abs(dx)>Math.abs(dy)+4){swiping=true;ev.preventDefault();setSwipe(chip,dx);}}
+  }
+  function onUp(ev){
+    clearTimeout(timer);
+    document.removeEventListener("pointermove",onMove);document.removeEventListener("pointerup",onUp);
+    const dx=ev.clientX-startX,dy=ev.clientY-startY;
+    if(started){
+      if(drag.raf)cancelAnimationFrame(drag.raf);
+      if(drag.scrollRaf)cancelAnimationFrame(drag.scrollRaf);
+      const target=findDropTarget(ev.clientX,ev.clientY);
+      drag.float.remove();chip.classList.remove("dragging");clearHi();
+      if(target){pushUndo();applyDrop(drag,target);}drag=null;return;
+    }
+    if(swiping){ if(Math.abs(dx)>FLICK_DX)commitChipFlick(Math.sign(dx)); else snapBack(chip); return; }
+    if(Math.hypot(dx,dy)<10){
+      if(type==="person"&&(state.mode==="pro"||selected.size>0)){ selected.has(id)?selected.delete(id):selected.add(id); render(); return; }
+      const r=chip.getBoundingClientRect(); openMenu(type,id,from,r.left,r.bottom);
+    }
+  }
+  function commitChipFlick(dir){
+    const inSite=(from!=="pool"&&from!=="vpool");
+    if(inSite){ pushUndo(); slideOut(chip,dir,()=>{pull(from,type,id);render();}); return; }
+    const label=type==="person"?("「"+(byId(people,id)?.name||"")+"」"):("車両「"+(byId(vehicles,id)?.name||"")+"」");
+    if(confirm(label+"を削除しますか？")){ pushUndo(); slideOut(chip,dir,()=>{deleteRecord(type,id);render();}); }
+    else snapBack(chip);
+  }
+  document.addEventListener("pointermove",onMove,{passive:false});
+  document.addEventListener("pointerup",onUp);
+}
+
+function startCard(e,card){
+  const sid=card.dataset.drop, startX=e.clientX,startY=e.clientY;
+  let swiping=false,decided=false;
+  function onMove(ev){
+    const dx=ev.clientX-startX,dy=ev.clientY-startY;
+    if(swiping){ev.preventDefault();setSwipe(card,dx);return;}
+    if(!decided&&Math.hypot(dx,dy)>12){decided=true;if(Math.abs(dx)>Math.abs(dy)+6){swiping=true;ev.preventDefault();setSwipe(card,dx);}}
+  }
+  function onUp(ev){
+    document.removeEventListener("pointermove",onMove);document.removeEventListener("pointerup",onUp);
+    if(!swiping)return;
+    const dx=ev.clientX-startX;
+    if(Math.abs(dx)>CARD_FLICK_DX){
+      const s=byId(sites,sid);
+      if(s&&confirm("現場「"+s.client+(s.name?" / "+s.name:"")+"」を削除しますか？")){ pushUndo(); slideOut(card,Math.sign(dx),()=>{const i=sites.findIndex(x=>x.id===sid);if(i>=0)sites.splice(i,1);delete asg[sid];render();}); }
+      else snapBack(card);
+    } else snapBack(card);
+  }
+  document.addEventListener("pointermove",onMove,{passive:false});
+  document.addEventListener("pointerup",onUp);
+}
+
+let menuCtx=null;
+function closeMenu(){$("menu").classList.add("hidden");$("menu").innerHTML="";menuCtx=null;}
+function openMenu(type,id,from,x,y){
+  const inSite=(from!=="pool"&&from!=="vpool");
+  menuCtx={type,id,from,inSite,group:false,ids:[id]};
+  renderMenuRoot();
+  const m=$("menu");m.classList.remove("hidden");
+  const w=230,vw=window.innerWidth,vh=window.innerHeight;
+  m.style.left=Math.max(8,Math.min(x,vw-w-8))+"px";
+  m.style.top=Math.max(8,Math.min(y+6,vh-300))+"px";
+}
+function openGroupMoveMenu(anchor){
+  const ids=[...selected];if(!ids.length)return;
+  menuCtx={type:"person",id:ids[0],from:"-",inSite:false,group:true,ids};
+  renderMenuSites();
+  const m=$("menu");m.classList.remove("hidden");
+  const r=anchor.getBoundingClientRect();
+  m.style.left=Math.max(8,Math.min(r.left,window.innerWidth-238))+"px";
+  m.style.top=(r.bottom+6)+"px";
+}
+function renderMenuRoot(){
+  const c=menuCtx;
+  const who=c.type==="person"?(byId(people,c.id)?.name||""):("車両 "+(byId(vehicles,c.id)?.name||""));
+  let h=`<div class="mhead">${esc(who)}</div>`;
+  if(c.inSite){
+    h+=`<button data-act="return">人員プールに戻す</button>`;
+    h+=`<button data-act="movesub">別の現場へ移す ▸</button>`;
+  }else{
+    h+=`<button data-act="movesub">現場へ配置 ▸</button>`;
+  }
+  if(c.type==="person") h+=`<button data-act="seltoggle">${selected.has(c.id)?"選択から外す":"選択に追加"}</button>`;
+  if(!c.inSite) h+=`<button class="mdel" data-act="delete">削除</button>`;
+  $("menu").innerHTML=h;
+}
+function renderMenuSites(){
+  const c=menuCtx;
+  let h=`<div class="mhead">${c.group?"選択中 "+c.ids.length+"名を移す先":"移す先を選ぶ"}</div>`;
+  const list=sites.filter(s=>!(c.inSite&&s.id===c.from));
+  if(list.length) h+=list.map(s=>`<button data-act="moveto" data-site="${s.id}">${esc(s.client)}${s.name?" / "+esc(s.name):""}</button>`).join("");
+  else h+=`<div class="mempty">移せる現場がありません</div>`;
+  $("menu").innerHTML=h;
+}
+$("menu").addEventListener("click",e=>{
+  const b=e.target.closest("button");if(!b||!menuCtx)return;const c=menuCtx,a=b.dataset.act;
+  if(a==="return"){pushUndo();applyDrop({type:c.type,id:c.id,ids:c.ids,group:c.group,from:c.from},c.type==="person"?"pool":"vpool");closeMenu();}
+  else if(a==="movesub"){renderMenuSites();}
+  else if(a==="moveto"){pushUndo();applyDrop({type:c.type,id:c.id,ids:c.ids,group:c.group,from:c.from},b.dataset.site);closeMenu();}
+  else if(a==="seltoggle"){selected.has(c.id)?selected.delete(c.id):selected.add(c.id);render();closeMenu();}
+  else if(a==="delete"){const who=c.type==="person"?byId(people,c.id)?.name:("車両 "+byId(vehicles,c.id)?.name);if(confirm(who+"を削除しますか？")){pushUndo();c.ids.forEach(x=>deleteRecord(c.type,x));render();}closeMenu();}
+});
+
+function deleteRecord(type,id){
+  if(type==="person"){const i=people.findIndex(x=>x.id===id);if(i>=0)people.splice(i,1);Object.values(state.days).forEach(d=>Object.values(d.asg).forEach(a=>{a.members=a.members.filter(x=>x!==id);}));selected.delete(id);}
+  else{const i=vehicles.findIndex(x=>x.id===id);if(i>=0)vehicles.splice(i,1);Object.values(state.days).forEach(d=>Object.values(d.asg).forEach(a=>{a.vehicles=a.vehicles.filter(x=>x!==id);}));}
+}
+function pull(sid,type,id){if(!asg[sid])return;if(type==="person")asg[sid].members=asg[sid].members.filter(x=>x!==id);else asg[sid].vehicles=asg[sid].vehicles.filter(x=>x!==id);}
+function push(sid,type,id){if(type==="person"){if(!asg[sid].members.includes(id))asg[sid].members.push(id);}else{if(!asg[sid].vehicles.includes(id))asg[sid].vehicles.push(id);}}
+function applyDrop(d,target){
+  const toSite=sites.find(s=>s.id===target), toPool=(target==="pool"||target==="vpool");
+  if(!toSite&&!toPool){render();return;}
+  d.ids.forEach(id=>{
+    if(d.group){sites.forEach(s=>pull(s.id,d.type,id));}
+    else if(d.from!=="pool"&&d.from!=="vpool"&&d.from!==target){pull(d.from,d.type,id);}
+    if(toSite)push(target,d.type,id);
+  });
+  if(d.group)selected.clear();
+  render();
+}
+
+$("board").addEventListener("change",e=>{const i=e.target.closest(".cellin");if(!i)return;const s=byId(sites,i.dataset.site);if(!s)return;pushUndo();s[i.dataset.edit]=i.value;save();$("undoBtn").disabled=false;});
+
+let needVal=3, capClient="", capSite="";
+const normq=x=>(x||"").toLowerCase().trim();
+function matchList(list,q){q=normq(q);if(!q)return list.slice(0,8);return list.filter(e=>normq(e.name).includes(q)||normq(e.reading).includes(q)).slice(0,8);}
+function renderSug(which){
+  const input=which==="client"?$("fClient"):$("fSite");
+  const list=which==="client"?clientMaster:siteMaster;
+  const box=which==="client"?$("clientSug"):$("siteSug");
+  const q=input.value;
+  let html=matchList(list,q).map(e=>`<div data-pick="${which}" data-name="${esc(e.name)}">${esc(e.name)}${e.reading?`<span class="rb">${esc(e.reading)}</span>`:""}</div>`).join("");
+  if(q.trim()&&!list.some(e=>e.name===q.trim())) html+=`<div class="new" data-pick="${which}" data-name="${esc(q.trim())}">＋「${esc(q.trim())}」を新規登録</div>`;
+  box.innerHTML=html;
+}
+function openSiteModal(){closeMenu();needVal=3;capClient="";capSite="";$("needVal").textContent="3";$("fClient").value="";$("fSite").value="";renderSug("client");renderSug("site");$("siteModal").classList.remove("hidden");setTimeout(()=>$("fClient").focus(),50);}
+function closeSiteModal(){$("siteModal").classList.add("hidden");}
+$("fClient").addEventListener("compositionupdate",e=>{if(e.data)capClient=e.data;});
+$("fSite").addEventListener("compositionupdate",e=>{if(e.data)capSite=e.data;});
+$("fClient").addEventListener("input",()=>renderSug("client"));
+$("fSite").addEventListener("input",()=>renderSug("site"));
+$("clientSug").addEventListener("click",e=>{const d=e.target.closest("[data-pick]");if(!d)return;$("fClient").value=d.dataset.name;renderSug("client");$("fSite").focus();});
+$("siteSug").addEventListener("click",e=>{const d=e.target.closest("[data-pick]");if(!d)return;$("fSite").value=d.dataset.name;renderSug("site");});
+$("needMinus").addEventListener("click",()=>{needVal=Math.max(1,needVal-1);$("needVal").textContent=needVal;});
+$("needPlus").addEventListener("click",()=>{needVal++;$("needVal").textContent=needVal;});
+$("siteCancel").addEventListener("click",closeSiteModal);
+$("siteModal").addEventListener("click",e=>{if(e.target.id==="siteModal")closeSiteModal();});
+$("siteOk").addEventListener("click",()=>{
+  const client=$("fClient").value.trim(); if(!client){alert("取引先を入力してください");return;}
+  const sname=$("fSite").value.trim();
+  pushUndo();
+  if(!clientMaster.some(e=>e.name===client))clientMaster.push({name:client,reading:capClient||""});
+  if(sname&&!siteMaster.some(e=>e.name===sname))siteMaster.push({name:sname,reading:capSite||""});
+  const id="s"+Date.now();
+  sites.push({id,client,name:sname,content:"",time:"",note:"",need:needVal,needVehicle:false});asg[id]={members:[],vehicles:[]};
+  closeSiteModal();render();
+});
+
+let pTagSel=new Set();
+function tagChoices(){return [...Object.entries(TAGS).map(([k,t])=>({k,label:t.label})),...activeCustomTags().map(c=>({k:c.id,label:c.label}))];}
+function renderPTags(){$("pTags").innerHTML=tagChoices().map(t=>`<button class="ptag ${pTagSel.has(t.k)?'on':''}" data-tag="${t.k}">${esc(t.label)}</button>`).join("");}
+function openPersonModal(){closeMenu();$("pName").value="";pTagSel.clear();renderPTags();$("personModal").classList.remove("hidden");setTimeout(()=>$("pName").focus(),50);}
+$("pTags").addEventListener("click",e=>{const b=e.target.closest(".ptag");if(!b)return;const t=b.dataset.tag;if(pTagSel.has(t)){pTagSel.delete(t);b.classList.remove("on");}else{pTagSel.add(t);b.classList.add("on");}});
+$("pCancel").addEventListener("click",()=>$("personModal").classList.add("hidden"));
+$("personModal").addEventListener("click",e=>{if(e.target.id==="personModal")$("personModal").classList.add("hidden");});
+$("pOk").addEventListener("click",()=>{const name=$("pName").value.trim();if(!name){alert("名前を入力してください");return;}pushUndo();people.push({id:"p"+Date.now(),name,tags:[...pTagSel]});$("personModal").classList.add("hidden");render();});
+
+function openVehModal(){closeMenu();$("vName").value="";$("vehModal").classList.remove("hidden");setTimeout(()=>$("vName").focus(),50);}
+$("vCancel").addEventListener("click",()=>$("vehModal").classList.add("hidden"));
+$("vehModal").addEventListener("click",e=>{if(e.target.id==="vehModal")$("vehModal").classList.add("hidden");});
+$("vOk").addEventListener("click",()=>{const name=$("vName").value.trim();if(!name){alert("車両名を入力してください");return;}pushUndo();vehicles.push({id:"v"+Date.now(),name});$("vehModal").classList.add("hidden");render();});
+
+$("prevDay").addEventListener("click",()=>shiftDate(-1));
+$("nextDay").addEventListener("click",()=>shiftDate(1));
+$("fsBtn").addEventListener("click",toggleFs);
+$("undoBtn").addEventListener("click",undo);
+$("viewBtn").addEventListener("click",toggleView);
+$("modeBtn").addEventListener("click",toggleMode);
+$("excelBtn").addEventListener("click",exportXlsx);
+$("copyPrev").addEventListener("click",copyPrev);
+$("exportBtn").addEventListener("click",exportData);
+$("importBtn").addEventListener("click",()=>$("importFile").click());
+$("importFile").addEventListener("change",e=>{const f=e.target.files[0];if(f)importData(f);e.target.value="";});
+$("resetAll").addEventListener("click",resetAll);
+$("legend").addEventListener("click",e=>{const t=e.target.closest("[data-tag]");if(!t)return;filterTag=filterTag===t.dataset.tag?null:t.dataset.tag;render();});
+$("poolSearch").addEventListener("input",e=>{searchQuery=e.target.value;renderPool();});
+$("poolUnassigned").addEventListener("change",e=>{unassignedOnly=e.target.checked;renderPool();});
+$("selinfo").addEventListener("click",e=>{
+  if(e.target.id==="clearsel"){selected.clear();render();closeMenu();return;}
+  const b=e.target.closest("[data-sact]");if(!b)return;
+  const ids=[...selected];if(!ids.length)return;
+  if(b.dataset.sact==="pool"){pushUndo();applyDrop({type:"person",id:ids[0],ids,group:true,from:"-"},"pool");closeMenu();}
+  else if(b.dataset.sact==="move"){openGroupMoveMenu(b);}
+});
+$("addPerson").addEventListener("click",openPersonModal);
+$("addSite").addEventListener("click",openSiteModal);
+$("addVeh").addEventListener("click",openVehModal);
+
+// ---- マスタ管理（取引先 / 現場 / 人員 / タグ / 車両） ----
+let mTab="client";
+function openMasterModal(){closeMenu();$("moreMenu").classList.add("hidden");mTab="client";renderMasterTabs();renderMasterBody();$("masterModal").classList.remove("hidden");}
+function renderMasterTabs(){document.querySelectorAll("#mTabs .mtab").forEach(b=>b.classList.toggle("on",b.dataset.mt===mTab));}
+function renderMasterBody(){
+  const body=$("mBody");
+  if(mTab==="client"||mTab==="site"){
+    const list=mTab==="client"?clientMaster:siteMaster;
+    const label=mTab==="client"?"取引先":"現場";
+    body.innerHTML=`<div class="mcount">${list.length}件 — 名前・よみを編集／削除できます。名前を変えると配車表の${label}名も自動で更新されます。</div>`+
+      (list.length?`<div class="mlist">`+list.map((e,i)=>
+        `<div class="mrow"><input data-mi="${i}" data-mf="name" value="${esc(e.name)}" placeholder="${label}名"><input class="rd" data-mi="${i}" data-mf="reading" value="${esc(e.reading||'')}" placeholder="よみ"><button class="mdelbtn" data-mdel="${i}">削除</button></div>`
+      ).join("")+`</div>`:`<div class="mempty2">まだ登録がありません。下の「＋」で追加できます。</div>`);
+  } else if(mTab==="person"){
+    const choices=tagChoices();
+    body.innerHTML=`<div class="mcount">${people.length}名 — 名前・属性を編集／削除できます。削除すると全日程の配置からも外れます。</div>`+
+      (people.length?`<div class="mlist">`+people.map((p,i)=>
+        `<div class="mrow"><input data-pi="${i}" data-pf="name" value="${esc(p.name)}" placeholder="名前"><button class="mdelbtn" data-pdel="${p.id}">削除</button>`+
+        `<div class="mtagrow">`+choices.map(t=>`<button class="ptag ${p.tags.includes(t.k)?'on':''}" data-ptag="${p.id}" data-tg="${t.k}">${esc(t.label)}</button>`).join("")+`</div></div>`
+      ).join("")+`</div>`:`<div class="mempty2">人員がいません。</div>`);
+  } else if(mTab==="tag"){
+    body.innerHTML=`<div class="mcount">人員に付けられる自由タグ。名前と色を変更できます（名前が空のタグは凡例に出ません）。</div>`+
+      (customTags.length?`<div class="mlist">`+customTags.map((c,i)=>
+        `<div class="mrow"><input data-ci="${i}" data-cf="label" value="${esc(c.label)}" placeholder="タグ名（例: 玉掛・職長・送迎）"><button class="mdelbtn" data-cdel="${i}">削除</button>`+
+        `<div class="mtagrow swatches">`+PALETTE.map(col=>`<button class="sw ${c.color===col?'on':''}" data-ci="${i}" data-col="${col}" style="background:${col}"></button>`).join("")+`</div></div>`
+      ).join("")+`</div>`:`<div class="mempty2">タグがありません。下の「＋」で追加できます。</div>`);
+  } else {
+    body.innerHTML=`<div class="mcount">${vehicles.length}台 — 車両名を編集／削除できます。</div>`+
+      (vehicles.length?`<div class="mlist">`+vehicles.map((v,i)=>
+        `<div class="mrow"><input data-vi="${i}" data-vf="name" value="${esc(v.name)}" placeholder="車両名"><button class="mdelbtn" data-vdel="${v.id}">削除</button></div>`
+      ).join("")+`</div>`:`<div class="mempty2">車両がありません。</div>`);
+  }
+}
+$("mTabs").addEventListener("click",e=>{const b=e.target.closest(".mtab");if(!b)return;mTab=b.dataset.mt;renderMasterTabs();renderMasterBody();});
+$("mClose").addEventListener("click",()=>$("masterModal").classList.add("hidden"));
+$("masterModal").addEventListener("click",e=>{if(e.target.id==="masterModal")$("masterModal").classList.add("hidden");});
+$("mBody").addEventListener("change",e=>{
+  const t=e.target;
+  if("mf" in t.dataset){
+    const list=mTab==="client"?clientMaster:siteMaster, i=+t.dataset.mi; if(!list[i])return;
+    pushUndo();
+    if(t.dataset.mf==="name"){
+      const oldName=list[i].name, newName=t.value.trim(), key=mTab==="client"?"client":"name";
+      list[i].name=newName;
+      if(oldName&&newName&&oldName!==newName)Object.values(state.days).forEach(d=>d.sites.forEach(s=>{if(s[key]===oldName)s[key]=newName;}));
+    }else{ list[i].reading=t.value.trim(); }
+    save();render();
+  }else if(t.dataset.pf==="name"){ const i=+t.dataset.pi; if(!people[i])return; pushUndo(); people[i].name=t.value.trim(); save(); render(); }
+  else if(t.dataset.vf==="name"){ const i=+t.dataset.vi; if(!vehicles[i])return; pushUndo(); vehicles[i].name=t.value.trim(); save(); render(); }
+  else if(t.dataset.cf==="label"){ const i=+t.dataset.ci; if(!customTags[i])return; pushUndo(); customTags[i].label=t.value.trim(); save(); render(); renderMasterBody(); }
+});
+$("mBody").addEventListener("click",e=>{
+  const del=e.target.closest("[data-mdel]");
+  if(del){const list=mTab==="client"?clientMaster:siteMaster, i=+del.dataset.mdel, ent=list[i]; if(!ent)return;
+    if(confirm("「"+(ent.name||"")+"」をマスタから削除しますか？（配車表に入力済みの内容は消えません）")){pushUndo();list.splice(i,1);save();renderMasterBody();} return;}
+  const pdel=e.target.closest("[data-pdel]");
+  if(pdel){const p=byId(people,pdel.dataset.pdel); if(!p)return;
+    if(confirm("「"+p.name+"」を削除しますか？（全日程の配置からも外れます）")){pushUndo();deleteRecord("person",pdel.dataset.pdel);save();render();renderMasterBody();} return;}
+  const vdel=e.target.closest("[data-vdel]");
+  if(vdel){const v=byId(vehicles,vdel.dataset.vdel); if(!v)return;
+    if(confirm("車両「"+v.name+"」を削除しますか？")){pushUndo();deleteRecord("vehicle",vdel.dataset.vdel);save();render();renderMasterBody();} return;}
+  const tg=e.target.closest("[data-ptag]");
+  if(tg){const p=byId(people,tg.dataset.ptag); if(!p)return; const k=tg.dataset.tg; pushUndo();
+    if(p.tags.includes(k))p.tags=p.tags.filter(x=>x!==k); else p.tags.push(k); save();render();renderMasterBody(); return;}
+  const cdel=e.target.closest("[data-cdel]");
+  if(cdel){const i=+cdel.dataset.cdel, c=customTags[i]; if(!c)return;
+    if(confirm("タグ「"+(c.label||"")+"」を削除しますか？（人員から外れます）")){pushUndo();const id=c.id;customTags.splice(i,1);people.forEach(p=>p.tags=p.tags.filter(x=>x!==id));save();render();renderMasterBody();} return;}
+  const sw=e.target.closest(".sw");
+  if(sw){const i=+sw.dataset.ci; if(!customTags[i])return; pushUndo(); customTags[i].color=sw.dataset.col; save();render();renderMasterBody(); return;}
+});
+$("mAdd").addEventListener("click",()=>{
+  pushUndo();
+  if(mTab==="client")clientMaster.push({name:"",reading:""});
+  else if(mTab==="site")siteMaster.push({name:"",reading:""});
+  else if(mTab==="person")people.push({id:"p"+Date.now(),name:"",tags:[]});
+  else if(mTab==="tag")customTags.push({id:"c"+Date.now(),label:"",color:PALETTE[customTags.length%PALETTE.length]});
+  else vehicles.push({id:"v"+Date.now(),name:""});
+  save();render();renderMasterBody();
+  const ins=$("mBody").querySelectorAll('input[data-mf="name"],input[data-pf="name"],input[data-vf="name"],input[data-cf="label"]');
+  if(ins.length)ins[ins.length-1].focus();
+});
+$("masterBtn").addEventListener("click",openMasterModal);
+
+// ---- Excelから貼り付けで一括取り込み ----
+const PASTE_HEADERS=new Set(["名前","氏名","会社名","取引先","取引先名","現場","現場名","車両","車両名","車","ふりがな","よみ","読み","タグ","属性","区分"]);
+function parsePaste(text){return text.split(/\r?\n/).map(l=>l.replace(/\s+$/,"")).filter(l=>l.trim()).map(l=>l.split("\t"));}
+function pasteRows(){let rows=parsePaste($("pasteArea").value);if(rows.length&&rows[0][0]&&PASTE_HEADERS.has(rows[0][0].trim()))rows=rows.slice(1);return rows;}
+function openPaste(){
+  const title={client:"取引先",site:"現場",person:"人員（名簿）",vehicle:"車両",tag:"タグ"}[mTab];
+  const hint={
+    person:"「氏名」列を貼り付け。2列目に属性（運転可・新人・リーダー・応援、または自由タグ名／カンマか空白区切り）も可。",
+    client:"「会社名」列を貼り付け。2列目に「ふりがな」も可。",
+    site:"「現場名」列を貼り付け。2列目に「ふりがな」も可。",
+    vehicle:"「車両名」列を貼り付け（1行に1台）。",
+    tag:"タグ名を1行に1つ貼り付け。"
+  }[mTab];
+  $("pasteTitle").textContent=title+"を貼り付けで一括追加";
+  $("pasteHint").textContent=hint+" 先頭が見出し行なら自動でスキップします。";
+  $("pasteArea").value="";$("pastePreview").textContent="";
+  $("pasteModal").classList.remove("hidden");setTimeout(()=>$("pasteArea").focus(),50);
+}
+$("mPaste").addEventListener("click",openPaste);
+$("pasteCancel").addEventListener("click",()=>$("pasteModal").classList.add("hidden"));
+$("pasteModal").addEventListener("click",e=>{if(e.target.id==="pasteModal")$("pasteModal").classList.add("hidden");});
+$("pasteArea").addEventListener("input",()=>{const n=pasteRows().length;$("pastePreview").textContent=n?("読み取り "+n+" 行を取り込みます"):"";});
+$("pasteOk").addEventListener("click",()=>{
+  const rows=pasteRows();
+  if(!rows.length){alert("貼り付け内容がありません。");return;}
+  pushUndo();
+  let added=0,skip=0,seq=0;const nid=pre=>pre+Date.now()+"_"+(seq++);
+  if(mTab==="person"){
+    const labelMap=new Map([...Object.entries(TAGS).map(([k,t])=>[t.label,k]),...customTags.map(c=>[c.label,c.id])]);
+    const exist=new Set(people.map(p=>p.name));
+    rows.forEach(f=>{const name=(f[0]||"").trim();if(!name)return;if(exist.has(name)){skip++;return;}
+      const tags=[];
+      (f[1]||"").split(/[,、・\/　\s]+/).map(x=>x.trim()).filter(Boolean).forEach(lbl=>{
+        let key=labelMap.get(lbl);
+        if(!key&&lbl.length<=10&&customTags.length<20){const c={id:nid("c"),label:lbl,color:PALETTE[customTags.length%PALETTE.length]};customTags.push(c);labelMap.set(lbl,c.id);key=c.id;}
+        if(key&&!tags.includes(key))tags.push(key);
+      });
+      people.push({id:nid("p"),name,tags});exist.add(name);added++;
+    });
+  }else if(mTab==="client"||mTab==="site"){
+    const list=mTab==="client"?clientMaster:siteMaster;const exist=new Set(list.map(e=>e.name));
+    rows.forEach(f=>{const name=(f[0]||"").trim();if(!name)return;if(exist.has(name)){skip++;return;}list.push({name,reading:(f[1]||"").trim()});exist.add(name);added++;});
+  }else if(mTab==="vehicle"){
+    const exist=new Set(vehicles.map(v=>v.name));
+    rows.forEach(f=>{const name=(f[0]||"").trim();if(!name)return;if(exist.has(name)){skip++;return;}vehicles.push({id:nid("v"),name});exist.add(name);added++;});
+  }else if(mTab==="tag"){
+    const exist=new Set(customTags.map(c=>c.label));
+    rows.forEach(f=>{const name=(f[0]||"").trim();if(!name)return;if(exist.has(name)){skip++;return;}customTags.push({id:nid("c"),label:name,color:PALETTE[customTags.length%PALETTE.length]});exist.add(name);added++;});
+  }
+  save();render();renderMasterBody();
+  $("pasteModal").classList.add("hidden");
+  alert("取り込み完了：追加 "+added+" 件"+(skip?("／重複スキップ "+skip+" 件"):""));
+});
+
+// ---- その他メニュー（保存/復元/初期化） ----
+$("moreBtn").addEventListener("click",e=>{e.stopPropagation();$("moreMenu").classList.toggle("hidden");});
+$("moreMenu").addEventListener("click",()=>setTimeout(()=>$("moreMenu").classList.add("hidden"),0));
+document.addEventListener("click",e=>{if(!(e.target.closest&&e.target.closest(".moreWrap")))$("moreMenu").classList.add("hidden");});
+
+// ---- PWA: ホーム画面に追加 ----
+let deferredPrompt=null;
+window.addEventListener("beforeinstallprompt",e=>{e.preventDefault();deferredPrompt=e;$("installBtn").style.display="";});
+$("installBtn").addEventListener("click",async()=>{
+  if(deferredPrompt){deferredPrompt.prompt();try{await deferredPrompt.userChoice;}catch(e){}deferredPrompt=null;$("installBtn").style.display="none";}
+  else{alert("ホーム画面に追加：\n\n・iPhone(Safari)：共有ボタン □↑ →「ホーム画面に追加」\n・Android(Chrome)：⋮ メニュー →「アプリをインストール」");}
+});
+window.addEventListener("appinstalled",()=>{$("installBtn").style.display="none";});
+(function(){const ua=navigator.userAgent||"";const iOS=/iphone|ipad|ipod/i.test(ua);const standalone=(window.matchMedia&&window.matchMedia("(display-mode: standalone)").matches)||navigator.standalone;if(iOS&&!standalone)$("installBtn").style.display="";})();
+
+// ---- Service Worker（オフライン動作） ----
+if("serviceWorker" in navigator){window.addEventListener("load",()=>{navigator.serviceWorker.register("sw.js").catch(()=>{});});}
+
+applyFs();
+render();
+</script>
+</body>
+</html>
