@@ -29,7 +29,8 @@
   }
   body[data-fs="l"]{--chip-fs:17px}
   body[data-fs="xl"]{--chip-fs:22px}
-  input{-webkit-user-select:text;user-select:text}
+  input,textarea{-webkit-user-select:text;user-select:text}
+  .pastearea{width:100%;padding:10px;border:1px solid var(--line);border-radius:8px;font-size:14px;font-family:inherit;resize:vertical}
   svg{width:14px;height:14px;vertical-align:-2px;display:inline-block}
   header{background:var(--panel);border-bottom:1px solid var(--line);padding:8px 12px;position:sticky;top:0;z-index:20}
   .htop{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
@@ -217,7 +218,7 @@
     <div class="proto-note">張り出しは<b>Excel出力</b>から（会社→現場→車→作業員5列を大きく・6名以上で2段）。<b>文字:大/特大</b>で人名拡大。<b>カード/表</b>切替・<b>↶戻す</b>。自動保存。</div>
     <div class="board" id="board"></div>
     <button class="add" id="addSite">＋ 現場カードを追加</button>
-    <div class="hint">日付 ◀ ▶ で別の日へ。<b>前日コピー</b>で前日を複製。表ビューで集合・内容・メモを直接編集できます。マスタの整理は「⋯ その他 → マスタ管理」から。</div>
+    <div class="hint">日付 ◀ ▶ で別の日へ。<b>前日コピー</b>で前日を複製。表ビューで集合・内容・メモを直接編集できます。マスタの整理・Excelからの一括取り込みは「⋯ その他 → マスタ管理」から。</div>
   </section>
 
   <section class="col">
@@ -275,8 +276,19 @@
       <button class="mtab" data-mt="vehicle">車両</button>
     </div>
     <div id="mBody"></div>
-    <button class="add" id="mAdd" style="width:100%;margin:12px 0 0">＋ この一覧に追加</button>
+    <button class="add" id="mPaste" style="width:100%;margin:12px 0 0;border-color:var(--blue);color:var(--blue)">📋 Excelから貼り付けで一括追加</button>
+    <button class="add" id="mAdd" style="width:100%;margin:6px 0 0">＋ 1件ずつ追加</button>
     <div class="actions"><button id="mClose" class="primary">閉じる</button></div>
+  </div>
+</div>
+
+<div class="modal hidden" id="pasteModal">
+  <div class="sheet">
+    <h3 id="pasteTitle">貼り付けで一括追加</h3>
+    <div class="mcount" id="pasteHint"></div>
+    <textarea id="pasteArea" class="pastearea" rows="9" placeholder="Excelの列を選択してコピー → ここに貼り付け（Ctrl/⌘+V）"></textarea>
+    <div class="mcount" id="pastePreview"></div>
+    <div class="actions"><button id="pasteCancel">キャンセル</button><button id="pasteOk" class="primary">取り込む</button></div>
   </div>
 </div>
 
@@ -889,6 +901,60 @@ $("mAdd").addEventListener("click",()=>{
   if(ins.length)ins[ins.length-1].focus();
 });
 $("masterBtn").addEventListener("click",openMasterModal);
+
+// ---- Excelから貼り付けで一括取り込み ----
+const PASTE_HEADERS=new Set(["名前","氏名","会社名","取引先","取引先名","現場","現場名","車両","車両名","車","ふりがな","よみ","読み","タグ","属性","区分"]);
+function parsePaste(text){return text.split(/\r?\n/).map(l=>l.replace(/\s+$/,"")).filter(l=>l.trim()).map(l=>l.split("\t"));}
+function pasteRows(){let rows=parsePaste($("pasteArea").value);if(rows.length&&rows[0][0]&&PASTE_HEADERS.has(rows[0][0].trim()))rows=rows.slice(1);return rows;}
+function openPaste(){
+  const title={client:"取引先",site:"現場",person:"人員（名簿）",vehicle:"車両",tag:"タグ"}[mTab];
+  const hint={
+    person:"「氏名」列を貼り付け。2列目に属性（運転可・新人・リーダー・応援、または自由タグ名／カンマか空白区切り）も可。",
+    client:"「会社名」列を貼り付け。2列目に「ふりがな」も可。",
+    site:"「現場名」列を貼り付け。2列目に「ふりがな」も可。",
+    vehicle:"「車両名」列を貼り付け（1行に1台）。",
+    tag:"タグ名を1行に1つ貼り付け。"
+  }[mTab];
+  $("pasteTitle").textContent=title+"を貼り付けで一括追加";
+  $("pasteHint").textContent=hint+" 先頭が見出し行なら自動でスキップします。";
+  $("pasteArea").value="";$("pastePreview").textContent="";
+  $("pasteModal").classList.remove("hidden");setTimeout(()=>$("pasteArea").focus(),50);
+}
+$("mPaste").addEventListener("click",openPaste);
+$("pasteCancel").addEventListener("click",()=>$("pasteModal").classList.add("hidden"));
+$("pasteModal").addEventListener("click",e=>{if(e.target.id==="pasteModal")$("pasteModal").classList.add("hidden");});
+$("pasteArea").addEventListener("input",()=>{const n=pasteRows().length;$("pastePreview").textContent=n?("読み取り "+n+" 行を取り込みます"):"";});
+$("pasteOk").addEventListener("click",()=>{
+  const rows=pasteRows();
+  if(!rows.length){alert("貼り付け内容がありません。");return;}
+  pushUndo();
+  let added=0,skip=0,seq=0;const nid=pre=>pre+Date.now()+"_"+(seq++);
+  if(mTab==="person"){
+    const labelMap=new Map([...Object.entries(TAGS).map(([k,t])=>[t.label,k]),...customTags.map(c=>[c.label,c.id])]);
+    const exist=new Set(people.map(p=>p.name));
+    rows.forEach(f=>{const name=(f[0]||"").trim();if(!name)return;if(exist.has(name)){skip++;return;}
+      const tags=[];
+      (f[1]||"").split(/[,、・\/　\s]+/).map(x=>x.trim()).filter(Boolean).forEach(lbl=>{
+        let key=labelMap.get(lbl);
+        if(!key&&lbl.length<=10&&customTags.length<20){const c={id:nid("c"),label:lbl,color:PALETTE[customTags.length%PALETTE.length]};customTags.push(c);labelMap.set(lbl,c.id);key=c.id;}
+        if(key&&!tags.includes(key))tags.push(key);
+      });
+      people.push({id:nid("p"),name,tags});exist.add(name);added++;
+    });
+  }else if(mTab==="client"||mTab==="site"){
+    const list=mTab==="client"?clientMaster:siteMaster;const exist=new Set(list.map(e=>e.name));
+    rows.forEach(f=>{const name=(f[0]||"").trim();if(!name)return;if(exist.has(name)){skip++;return;}list.push({name,reading:(f[1]||"").trim()});exist.add(name);added++;});
+  }else if(mTab==="vehicle"){
+    const exist=new Set(vehicles.map(v=>v.name));
+    rows.forEach(f=>{const name=(f[0]||"").trim();if(!name)return;if(exist.has(name)){skip++;return;}vehicles.push({id:nid("v"),name});exist.add(name);added++;});
+  }else if(mTab==="tag"){
+    const exist=new Set(customTags.map(c=>c.label));
+    rows.forEach(f=>{const name=(f[0]||"").trim();if(!name)return;if(exist.has(name)){skip++;return;}customTags.push({id:nid("c"),label:name,color:PALETTE[customTags.length%PALETTE.length]});exist.add(name);added++;});
+  }
+  save();render();renderMasterBody();
+  $("pasteModal").classList.add("hidden");
+  alert("取り込み完了：追加 "+added+" 件"+(skip?("／重複スキップ "+skip+" 件"):""));
+});
 
 // ---- その他メニュー（保存/復元/初期化） ----
 $("moreBtn").addEventListener("click",e=>{e.stopPropagation();$("moreMenu").classList.toggle("hidden");});
