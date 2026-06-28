@@ -1,0 +1,17 @@
+{
+  "name": "らくらく手配 — 配車表",
+  "short_name": "らくらく手配",
+  "description": "日報レスの配車表づくり。人と車を現場に割り当てて、そのままExcelで張り出し。",
+  "lang": "ja",
+  "dir": "ltr",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#f4f6f8",
+  "theme_color": "#2f6fed",
+  "icons": [
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "maskable" }
+  ]
+}
