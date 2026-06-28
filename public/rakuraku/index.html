@@ -54,6 +54,18 @@
   .moremenu button:last-child{border-bottom:none}
   .moremenu button:active{background:#f0f6ff}
   .moremenu button.danger{color:var(--red)}
+  .mtabs{display:flex;gap:6px;margin:6px 0 8px;flex-wrap:wrap}
+  .mtab{flex:1;padding:8px;border:1px solid var(--line);background:#fff;border-radius:8px;font-size:13px;cursor:pointer;min-width:64px}
+  .mtab.on{border-color:var(--blue);background:#eef4ff;color:var(--blue);font-weight:700}
+  .mcount{font-size:11px;color:var(--sub);margin:0 0 6px}
+  .mlist{max-height:50vh;overflow:auto;border-top:1px solid #f0f3f6}
+  .mrow{display:flex;gap:6px;align-items:center;padding:7px 0;border-bottom:1px solid #f0f3f6;flex-wrap:wrap}
+  .mrow input{flex:1;min-width:60px;padding:9px;border:1px solid var(--line);border-radius:8px;font-size:15px}
+  .mrow input.rd{flex:.75;color:var(--sub);font-size:13px}
+  .mrow .mdelbtn{padding:9px 11px;border:1px solid var(--line);background:#fff;color:var(--red);border-radius:8px;font-size:13px;cursor:pointer;white-space:nowrap}
+  .mtagrow{display:flex;gap:5px;flex-wrap:wrap;flex-basis:100%}
+  .mtagrow .ptag{padding:6px 10px;font-size:12px}
+  .mempty2{padding:18px 4px;color:var(--sub);font-size:13px;text-align:center}
   .presence{margin-left:auto;display:flex;gap:4px;align-items:center;font-size:12px;color:var(--sub)}
   .ava{width:22px;height:22px;border-radius:50%;background:var(--green);color:#fff;display:grid;place-items:center;font-size:11px;border:2px solid #fff;box-shadow:0 0 0 1px var(--green)}
   .alertbar{margin-top:6px;font-size:13px;display:flex;gap:12px;flex-wrap:wrap;color:var(--sub)}
@@ -172,6 +184,7 @@
     <div class="moreWrap">
       <button class="toolbtn" id="moreBtn">⋯ その他</button>
       <div class="moremenu hidden" id="moreMenu">
+        <button id="masterBtn">🗂 マスタ管理</button>
         <button id="exportBtn">💾 保存（バックアップ）</button>
         <button id="importBtn">📂 復元</button>
         <button class="danger" id="resetAll">↺ 初期化（サンプルに戻す）</button>
@@ -200,7 +213,7 @@
     <div class="proto-note">張り出しは<b>Excel出力</b>から（会社→現場→車→作業員5列を大きく・6名以上で2段）。<b>文字:大/特大</b>で人名拡大。<b>カード/表</b>切替・<b>↶戻す</b>。自動保存。</div>
     <div class="board" id="board"></div>
     <button class="add" id="addSite">＋ 現場カードを追加</button>
-    <div class="hint">日付 ◀ ▶ で別の日へ。<b>前日コピー</b>で前日を複製。表ビューで集合・内容・メモを直接編集できます。</div>
+    <div class="hint">日付 ◀ ▶ で別の日へ。<b>前日コピー</b>で前日を複製。表ビューで集合・内容・メモを直接編集できます。マスタの整理は「⋯ その他 → マスタ管理」から。</div>
   </section>
 
   <section class="col">
@@ -249,6 +262,21 @@
     <label>車両名（名前だけでOK）</label>
     <input id="vName" autocomplete="off" placeholder="例: 1号車 / プリウス" />
     <div class="actions"><button id="vCancel">キャンセル</button><button id="vOk" class="primary">追加する</button></div>
+  </div>
+</div>
+
+<div class="modal hidden" id="masterModal">
+  <div class="sheet">
+    <h3>マスタ管理</h3>
+    <div class="mtabs" id="mTabs">
+      <button class="mtab on" data-mt="client">取引先</button>
+      <button class="mtab" data-mt="site">現場</button>
+      <button class="mtab" data-mt="person">人員</button>
+      <button class="mtab" data-mt="vehicle">車両</button>
+    </div>
+    <div id="mBody"></div>
+    <button class="add" id="mAdd" style="width:100%;margin:12px 0 0">＋ この一覧に追加</button>
+    <div class="actions"><button id="mClose" class="primary">閉じる</button></div>
   </div>
 </div>
 
@@ -756,6 +784,75 @@ $("selinfo").addEventListener("click",e=>{
 $("addPerson").addEventListener("click",openPersonModal);
 $("addSite").addEventListener("click",openSiteModal);
 $("addVeh").addEventListener("click",openVehModal);
+
+// ---- マスタ管理（取引先 / 現場 / 人員 / 車両） ----
+let mTab="client";
+function openMasterModal(){closeMenu();$("moreMenu").classList.add("hidden");mTab="client";renderMasterTabs();renderMasterBody();$("masterModal").classList.remove("hidden");}
+function renderMasterTabs(){document.querySelectorAll("#mTabs .mtab").forEach(b=>b.classList.toggle("on",b.dataset.mt===mTab));}
+function renderMasterBody(){
+  const body=$("mBody");
+  if(mTab==="client"||mTab==="site"){
+    const list=mTab==="client"?clientMaster:siteMaster;
+    const label=mTab==="client"?"取引先":"現場";
+    body.innerHTML=`<div class="mcount">${list.length}件 — 名前・よみを編集／削除できます。名前を変えると配車表の${label}名も自動で更新されます。</div>`+
+      (list.length?`<div class="mlist">`+list.map((e,i)=>
+        `<div class="mrow"><input data-mi="${i}" data-mf="name" value="${esc(e.name)}" placeholder="${label}名"><input class="rd" data-mi="${i}" data-mf="reading" value="${esc(e.reading||'')}" placeholder="よみ"><button class="mdelbtn" data-mdel="${i}">削除</button></div>`
+      ).join("")+`</div>`:`<div class="mempty2">まだ登録がありません。下の「＋」で追加できます。</div>`);
+  } else if(mTab==="person"){
+    body.innerHTML=`<div class="mcount">${people.length}名 — 名前・属性を編集／削除できます。削除すると全日程の配置からも外れます。</div>`+
+      (people.length?`<div class="mlist">`+people.map((p,i)=>
+        `<div class="mrow"><input data-pi="${i}" data-pf="name" value="${esc(p.name)}" placeholder="名前"><button class="mdelbtn" data-pdel="${p.id}">削除</button>`+
+        `<div class="mtagrow">`+Object.entries(TAGS).map(([k,t])=>`<button class="ptag ${p.tags.includes(k)?'on':''}" data-ptag="${p.id}" data-tg="${k}">${t.label}</button>`).join("")+`</div></div>`
+      ).join("")+`</div>`:`<div class="mempty2">人員がいません。</div>`);
+  } else {
+    body.innerHTML=`<div class="mcount">${vehicles.length}台 — 車両名を編集／削除できます。</div>`+
+      (vehicles.length?`<div class="mlist">`+vehicles.map((v,i)=>
+        `<div class="mrow"><input data-vi="${i}" data-vf="name" value="${esc(v.name)}" placeholder="車両名"><button class="mdelbtn" data-vdel="${v.id}">削除</button></div>`
+      ).join("")+`</div>`:`<div class="mempty2">車両がありません。</div>`);
+  }
+}
+$("mTabs").addEventListener("click",e=>{const b=e.target.closest(".mtab");if(!b)return;mTab=b.dataset.mt;renderMasterTabs();renderMasterBody();});
+$("mClose").addEventListener("click",()=>$("masterModal").classList.add("hidden"));
+$("masterModal").addEventListener("click",e=>{if(e.target.id==="masterModal")$("masterModal").classList.add("hidden");});
+$("mBody").addEventListener("change",e=>{
+  const t=e.target;
+  if("mf" in t.dataset){
+    const list=mTab==="client"?clientMaster:siteMaster, i=+t.dataset.mi; if(!list[i])return;
+    pushUndo();
+    if(t.dataset.mf==="name"){
+      const oldName=list[i].name, newName=t.value.trim(), key=mTab==="client"?"client":"name";
+      list[i].name=newName;
+      if(oldName&&newName&&oldName!==newName)Object.values(state.days).forEach(d=>d.sites.forEach(s=>{if(s[key]===oldName)s[key]=newName;}));
+    }else{ list[i].reading=t.value.trim(); }
+    save();render();
+  }else if(t.dataset.pf==="name"){ const i=+t.dataset.pi; if(!people[i])return; pushUndo(); people[i].name=t.value.trim(); save(); render(); }
+  else if(t.dataset.vf==="name"){ const i=+t.dataset.vi; if(!vehicles[i])return; pushUndo(); vehicles[i].name=t.value.trim(); save(); render(); }
+});
+$("mBody").addEventListener("click",e=>{
+  const del=e.target.closest("[data-mdel]");
+  if(del){const list=mTab==="client"?clientMaster:siteMaster, i=+del.dataset.mdel, ent=list[i]; if(!ent)return;
+    if(confirm("「"+(ent.name||"")+"」をマスタから削除しますか？（配車表に入力済みの内容は消えません）")){pushUndo();list.splice(i,1);save();renderMasterBody();} return;}
+  const pdel=e.target.closest("[data-pdel]");
+  if(pdel){const p=byId(people,pdel.dataset.pdel); if(!p)return;
+    if(confirm("「"+p.name+"」を削除しますか？（全日程の配置からも外れます）")){pushUndo();deleteRecord("person",pdel.dataset.pdel);save();render();renderMasterBody();} return;}
+  const vdel=e.target.closest("[data-vdel]");
+  if(vdel){const v=byId(vehicles,vdel.dataset.vdel); if(!v)return;
+    if(confirm("車両「"+v.name+"」を削除しますか？")){pushUndo();deleteRecord("vehicle",vdel.dataset.vdel);save();render();renderMasterBody();} return;}
+  const tg=e.target.closest("[data-ptag]");
+  if(tg){const p=byId(people,tg.dataset.ptag); if(!p)return; const k=tg.dataset.tg; pushUndo();
+    if(p.tags.includes(k))p.tags=p.tags.filter(x=>x!==k); else p.tags.push(k); save();render();renderMasterBody(); return;}
+});
+$("mAdd").addEventListener("click",()=>{
+  pushUndo();
+  if(mTab==="client")clientMaster.push({name:"",reading:""});
+  else if(mTab==="site")siteMaster.push({name:"",reading:""});
+  else if(mTab==="person")people.push({id:"p"+Date.now(),name:"",tags:[]});
+  else vehicles.push({id:"v"+Date.now(),name:""});
+  save();renderMasterBody();
+  const ins=$("mBody").querySelectorAll('input[data-mf="name"],input[data-pf="name"],input[data-vf="name"]');
+  if(ins.length)ins[ins.length-1].focus();
+});
+$("masterBtn").addEventListener("click",openMasterModal);
 
 // ---- その他メニュー（保存/復元/初期化） ----
 $("moreBtn").addEventListener("click",e=>{e.stopPropagation();$("moreMenu").classList.toggle("hidden");});
