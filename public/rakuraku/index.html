@@ -66,6 +66,10 @@
   .mtagrow{display:flex;gap:5px;flex-wrap:wrap;flex-basis:100%}
   .mtagrow .ptag{padding:6px 10px;font-size:12px}
   .mempty2{padding:18px 4px;color:var(--sub);font-size:13px;text-align:center}
+  .cdot{width:8px;height:8px;border-radius:50%;display:inline-block;margin-left:1px}
+  .swatches{gap:8px;margin-top:6px}
+  .sw{width:26px;height:26px;border-radius:50%;border:2px solid #fff;box-shadow:0 0 0 1px var(--line);cursor:pointer;padding:0}
+  .sw.on{box-shadow:0 0 0 2px var(--ink)}
   .presence{margin-left:auto;display:flex;gap:4px;align-items:center;font-size:12px;color:var(--sub)}
   .ava{width:22px;height:22px;border-radius:50%;background:var(--green);color:#fff;display:grid;place-items:center;font-size:11px;border:2px solid #fff;box-shadow:0 0 0 1px var(--green)}
   .alertbar{margin-top:6px;font-size:13px;display:flex;gap:12px;flex-wrap:wrap;color:var(--sub)}
@@ -246,12 +250,7 @@
     <label>名前</label>
     <input id="pName" autocomplete="off" placeholder="例: 田中" />
     <label>属性（タップで選択・複数可）</label>
-    <div class="ptags" id="pTags">
-      <button class="ptag" data-tag="driver">運転可</button>
-      <button class="ptag" data-tag="newbie">新人</button>
-      <button class="ptag" data-tag="leader">リーダー</button>
-      <button class="ptag" data-tag="helper">応援</button>
-    </div>
+    <div class="ptags" id="pTags"></div>
     <div class="actions"><button id="pCancel">キャンセル</button><button id="pOk" class="primary">追加する</button></div>
   </div>
 </div>
@@ -272,6 +271,7 @@
       <button class="mtab on" data-mt="client">取引先</button>
       <button class="mtab" data-mt="site">現場</button>
       <button class="mtab" data-mt="person">人員</button>
+      <button class="mtab" data-mt="tag">タグ</button>
       <button class="mtab" data-mt="vehicle">車両</button>
     </div>
     <div id="mBody"></div>
@@ -293,6 +293,9 @@ const TAGS = {
   leader:{label:"リーダー",svg:SVG.star,border:"blue",color:"var(--blue)"},
   helper:{label:"応援",svg:SVG.helper,border:"orange",color:"var(--orange)"},
 };
+const PALETTE=["#2f6fed","#1f9d57","#e0413a","#e7a400","#e8772e","#7b54d6","#0e9aa7","#d6457b","#5b6673"];
+function defaultMode(){return ((window.matchMedia&&window.matchMedia("(pointer:fine)").matches)||window.innerWidth>=1024)?"pro":"easy";}
+function defaultCustomTags(){return [{id:"c1",label:"タグ1",color:"#0e9aa7"},{id:"c2",label:"タグ2",color:"#d6457b"},{id:"c3",label:"タグ3",color:"#7b54d6"}];}
 const READING={
  "大崎建設":"おおさきけんせつ","高城総業":"たかぎそうぎょう","大和栄建":"だいわえいけん","クラレ":"くられ",
  "高鋼工業":"こうこうこうぎょう","カマブ":"かまぶ","松振組":"まつふりぐみ","旺城資材":"おうじょうしざい",
@@ -342,18 +345,20 @@ function buildSeedState(){
   });
   OFF.forEach(nm=>people.push({id:"p"+(++pid),name:nm+"(休)",tags:[]}));
   HOSP.forEach(nm=>people.push({id:"p"+(++pid),name:nm+"(入院)",tags:[]}));
-  return {people,vehicles,clientMaster,siteMaster,days:{[SEED_DATE]:{sites,asg}},currentDate:SEED_DATE,mode:"easy",view:"card",fontScale:"s"};
+  return {people,vehicles,clientMaster,siteMaster,customTags:defaultCustomTags(),days:{[SEED_DATE]:{sites,asg}},currentDate:SEED_DATE,mode:defaultMode(),modeManual:false,view:"card",fontScale:"s"};
 }
 
 function loadState(){try{const r=localStorage.getItem(KEY);if(!r)return null;const s=JSON.parse(r);if(!s||!s.days||!s.people)return null;return s;}catch(e){return null;}}
 let state=loadState()||buildSeedState();
-if(!state.mode)state.mode="easy";
+if(!state.customTags)state.customTags=defaultCustomTags();
+if(typeof state.modeManual!=="boolean")state.modeManual=false;
+if(!state.modeManual||!state.mode)state.mode=defaultMode();
 if(!state.view)state.view="card";
 if(!state.fontScale)state.fontScale="s";
 let currentDate=state.currentDate||SEED_DATE;
-let people,vehicles,clientMaster,siteMaster,sites,asg;
+let people,vehicles,clientMaster,siteMaster,customTags,sites,asg;
 function ensureDay(d){if(!state.days[d])state.days[d]={sites:[],asg:{}};}
-function bindDay(){ensureDay(currentDate);people=state.people;vehicles=state.vehicles;clientMaster=state.clientMaster;siteMaster=state.siteMaster;sites=state.days[currentDate].sites;asg=state.days[currentDate].asg;}
+function bindDay(){ensureDay(currentDate);people=state.people;vehicles=state.vehicles;clientMaster=state.clientMaster;siteMaster=state.siteMaster;customTags=state.customTags;sites=state.days[currentDate].sites;asg=state.days[currentDate].asg;}
 function save(){state.currentDate=currentDate;try{localStorage.setItem(KEY,JSON.stringify(state));}catch(e){}}
 bindDay();
 
@@ -362,9 +367,9 @@ let searchQuery="", unassignedOnly=false;
 const esc=s=>String(s==null?"":s).replace(/&/g,"&amp;").replace(/"/g,"&quot;").replace(/</g,"&lt;");
 
 let undoStack=[];
-function snapshot(){return JSON.stringify({days:state.days,people:state.people,vehicles:state.vehicles,clientMaster:state.clientMaster,siteMaster:state.siteMaster});}
+function snapshot(){return JSON.stringify({days:state.days,people:state.people,vehicles:state.vehicles,clientMaster:state.clientMaster,siteMaster:state.siteMaster,customTags:state.customTags});}
 function pushUndo(){undoStack.push(snapshot());if(undoStack.length>40)undoStack.shift();}
-function undo(){if(!undoStack.length)return;const s=JSON.parse(undoStack.pop());state.days=s.days;state.people=s.people;state.vehicles=s.vehicles;state.clientMaster=s.clientMaster;state.siteMaster=s.siteMaster;selected.clear();closeMenu();bindDay();render();}
+function undo(){if(!undoStack.length)return;const s=JSON.parse(undoStack.pop());state.days=s.days;state.people=s.people;state.vehicles=s.vehicles;state.clientMaster=s.clientMaster;state.siteMaster=s.siteMaster;if(s.customTags)state.customTags=s.customTags;selected.clear();closeMenu();bindDay();render();}
 
 const WD=["日","月","火","水","木","金","土"];
 function fmt(dt){return dt.getFullYear()+"-"+String(dt.getMonth()+1).padStart(2,"0")+"-"+String(dt.getDate()).padStart(2,"0");}
@@ -380,12 +385,12 @@ function copyPrev(){
   selected.clear();bindDay();render();
 }
 function resetAll(){if(!confirm("すべての配車データを初期状態（6/5サンプル）に戻しますか？"))return;const mode=state.mode,view=state.view,fs=state.fontScale;state=buildSeedState();state.mode=mode;state.view=view;state.fontScale=fs;currentDate=SEED_DATE;selected.clear();undoStack=[];closeMenu();bindDay();render();}
-function toggleMode(){state.mode=state.mode==="pro"?"easy":"pro";selected.clear();closeMenu();render();}
+function toggleMode(){state.mode=state.mode==="pro"?"easy":"pro";state.modeManual=true;selected.clear();closeMenu();render();}
 function toggleView(){state.view=state.view==="table"?"card":"table";closeMenu();render();}
 function toggleFs(){const order=["s","l","xl"];const i=order.indexOf(state.fontScale);state.fontScale=order[(i+1)%order.length];applyFs();save();}
 function applyFs(){document.body.dataset.fs=state.fontScale;$("fsBtn").textContent="文字:"+(state.fontScale==="s"?"標準":state.fontScale==="l"?"大":"特大");}
 function exportData(){const blob=new Blob([JSON.stringify(state,null,2)],{type:"application/json"});const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download="rakuraku-haisha-"+currentDate+".json";document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);}
-function importData(file){const r=new FileReader();r.onload=()=>{try{const s=JSON.parse(r.result);if(!s||!s.days||!s.people){alert("対応していないファイルです。");return;}if(!confirm("現在のデータを、読み込んだ内容で置き換えますか？（戻すには初期化）"))return;state=s;if(!state.mode)state.mode="easy";if(!state.view)state.view="card";if(!state.fontScale)state.fontScale="s";currentDate=state.currentDate||SEED_DATE;undoStack=[];selected.clear();closeMenu();bindDay();applyFs();render();}catch(e){alert("読み込みに失敗しました。");}};r.readAsText(file);}
+function importData(file){const r=new FileReader();r.onload=()=>{try{const s=JSON.parse(r.result);if(!s||!s.days||!s.people){alert("対応していないファイルです。");return;}if(!confirm("現在のデータを、読み込んだ内容で置き換えますか？（戻すには初期化）"))return;state=s;if(!state.customTags)state.customTags=defaultCustomTags();if(typeof state.modeManual!=="boolean")state.modeManual=false;if(!state.mode)state.mode=defaultMode();if(!state.view)state.view="card";if(!state.fontScale)state.fontScale="s";currentDate=state.currentDate||SEED_DATE;undoStack=[];selected.clear();closeMenu();bindDay();applyFs();render();}catch(e){alert("読み込みに失敗しました。");}};r.readAsText(file);}
 
 // ---- Excel出力（会社→現場→車→作業員5列(大/折返し)→集合/内容/メモ）----
 async function exportXlsx(){
@@ -444,8 +449,20 @@ const $=id=>document.getElementById(id);
 function personSites(pid){return sites.filter(s=>asg[s.id]?.members.includes(pid));}
 function vehicleSites(vid){return sites.filter(s=>asg[s.id]?.vehicles.includes(vid));}
 function siteHasDriver(sid){return (asg[sid]?.members||[]).some(pid=>byId(people,pid)?.tags.includes("driver"));}
-function repBorder(p){if(p.tags.includes("helper"))return "orange";if(p.tags.includes("newbie"))return "yellow";if(p.tags.includes("driver")||p.tags.includes("leader"))return "blue";return "";}
-function badges(p){return p.tags.map(t=>TAGS[t].svg?`<span class="bdg" style="color:${TAGS[t].color}">${TAGS[t].svg}</span>`:"").join("");}
+function activeCustomTags(){return (customTags||[]).filter(c=>c.label&&c.label.trim());}
+function customTagOf(key){return (customTags||[]).find(c=>c.id===key&&c.label&&c.label.trim());}
+function chipStyle(p){
+  if(p.tags.includes("helper"))return {db:"orange"};
+  if(p.tags.includes("newbie"))return {db:"yellow"};
+  if(p.tags.includes("driver")||p.tags.includes("leader"))return {db:"blue"};
+  for(const t of p.tags){const c=customTagOf(t);if(c)return {color:c.color};}
+  return {};
+}
+function badges(p){
+  const built=p.tags.map(t=>(TAGS[t]&&TAGS[t].svg)?`<span class="bdg" style="color:${TAGS[t].color}">${TAGS[t].svg}</span>`:"").join("");
+  const dots=p.tags.map(t=>{const c=customTagOf(t);return c?`<span class="cdot" style="background:${c.color}"></span>`:"";}).join("");
+  return built+dots;
+}
 
 function chipPerson(p,{inPool=false,siteId=null}={}){
   if(!p)return "";
@@ -453,7 +470,8 @@ function chipPerson(p,{inPool=false,siteId=null}={}){
   const dimByFilter=filterTag&&!p.tags.includes(filterTag);
   const cls=["chip"];if(inPool&&placed)cls.push("placed");if(dimByFilter)cls.push("dim");if(selected.has(p.id))cls.push("sel");
   const dupMark=(dup&&siteId)?' <span style="color:var(--red)">⚠</span>':'';
-  return `<span class="${cls.join(' ')}" data-border="${repBorder(p)}" data-type="person" data-id="${p.id}" data-from="${inPool?'pool':siteId}">${esc(p.name)}${badges(p)}${dupMark}</span>`;
+  const st=chipStyle(p);const styleAttr=st.color?` style="border-color:${st.color}"`:"";
+  return `<span class="${cls.join(' ')}" data-border="${st.db||''}"${styleAttr} data-type="person" data-id="${p.id}" data-from="${inPool?'pool':siteId}">${esc(p.name)}${badges(p)}${dupMark}</span>`;
 }
 function chipVehicle(v,{inPool=false,siteId=null}={}){
   if(!v)return "";
@@ -516,8 +534,10 @@ function render(){
   $("modeBtn").textContent = state.mode==="pro"?"サクサク操作":"かんたん操作";
   $("viewBtn").textContent = state.view==="table"?"カードで見る":"表で見る";
   $("undoBtn").disabled = undoStack.length===0;
-  $("legend").innerHTML = Object.entries(TAGS).map(([k,t])=>
-    `<span class="chip tag ${filterTag&&filterTag!==k?'off':''}" data-border="${t.border}" data-tag="${k}">${t.svg?`<span class="bdg" style="color:${t.color}">${t.svg}</span>`:''}${t.label}</span>`).join("");
+  const legendTags=[...Object.entries(TAGS).map(([k,t])=>({k,label:t.label,svg:t.svg,color:t.color,border:t.border})),
+    ...activeCustomTags().map(c=>({k:c.id,label:c.label,svg:"",color:c.color,border:""}))];
+  $("legend").innerHTML = legendTags.map(t=>
+    `<span class="chip tag ${filterTag&&filterTag!==t.k?'off':''}" data-border="${t.border}"${t.border?'':` style="border-color:${t.color}"`} data-tag="${t.k}">${t.svg?`<span class="bdg" style="color:${t.color}">${t.svg}</span>`:''}${esc(t.label)}</span>`).join("");
   renderPool();
   $("vpool").innerHTML = vehicles.map(v=>chipVehicle(v,{inPool:true})).join("");
   const board=$("board");
@@ -748,7 +768,9 @@ $("siteOk").addEventListener("click",()=>{
 });
 
 let pTagSel=new Set();
-function openPersonModal(){closeMenu();$("pName").value="";pTagSel.clear();document.querySelectorAll("#pTags .ptag").forEach(b=>b.classList.remove("on"));$("personModal").classList.remove("hidden");setTimeout(()=>$("pName").focus(),50);}
+function tagChoices(){return [...Object.entries(TAGS).map(([k,t])=>({k,label:t.label})),...activeCustomTags().map(c=>({k:c.id,label:c.label}))];}
+function renderPTags(){$("pTags").innerHTML=tagChoices().map(t=>`<button class="ptag ${pTagSel.has(t.k)?'on':''}" data-tag="${t.k}">${esc(t.label)}</button>`).join("");}
+function openPersonModal(){closeMenu();$("pName").value="";pTagSel.clear();renderPTags();$("personModal").classList.remove("hidden");setTimeout(()=>$("pName").focus(),50);}
 $("pTags").addEventListener("click",e=>{const b=e.target.closest(".ptag");if(!b)return;const t=b.dataset.tag;if(pTagSel.has(t)){pTagSel.delete(t);b.classList.remove("on");}else{pTagSel.add(t);b.classList.add("on");}});
 $("pCancel").addEventListener("click",()=>$("personModal").classList.add("hidden"));
 $("personModal").addEventListener("click",e=>{if(e.target.id==="personModal")$("personModal").classList.add("hidden");});
@@ -785,7 +807,7 @@ $("addPerson").addEventListener("click",openPersonModal);
 $("addSite").addEventListener("click",openSiteModal);
 $("addVeh").addEventListener("click",openVehModal);
 
-// ---- マスタ管理（取引先 / 現場 / 人員 / 車両） ----
+// ---- マスタ管理（取引先 / 現場 / 人員 / タグ / 車両） ----
 let mTab="client";
 function openMasterModal(){closeMenu();$("moreMenu").classList.add("hidden");mTab="client";renderMasterTabs();renderMasterBody();$("masterModal").classList.remove("hidden");}
 function renderMasterTabs(){document.querySelectorAll("#mTabs .mtab").forEach(b=>b.classList.toggle("on",b.dataset.mt===mTab));}
@@ -799,11 +821,18 @@ function renderMasterBody(){
         `<div class="mrow"><input data-mi="${i}" data-mf="name" value="${esc(e.name)}" placeholder="${label}名"><input class="rd" data-mi="${i}" data-mf="reading" value="${esc(e.reading||'')}" placeholder="よみ"><button class="mdelbtn" data-mdel="${i}">削除</button></div>`
       ).join("")+`</div>`:`<div class="mempty2">まだ登録がありません。下の「＋」で追加できます。</div>`);
   } else if(mTab==="person"){
+    const choices=tagChoices();
     body.innerHTML=`<div class="mcount">${people.length}名 — 名前・属性を編集／削除できます。削除すると全日程の配置からも外れます。</div>`+
       (people.length?`<div class="mlist">`+people.map((p,i)=>
         `<div class="mrow"><input data-pi="${i}" data-pf="name" value="${esc(p.name)}" placeholder="名前"><button class="mdelbtn" data-pdel="${p.id}">削除</button>`+
-        `<div class="mtagrow">`+Object.entries(TAGS).map(([k,t])=>`<button class="ptag ${p.tags.includes(k)?'on':''}" data-ptag="${p.id}" data-tg="${k}">${t.label}</button>`).join("")+`</div></div>`
+        `<div class="mtagrow">`+choices.map(t=>`<button class="ptag ${p.tags.includes(t.k)?'on':''}" data-ptag="${p.id}" data-tg="${t.k}">${esc(t.label)}</button>`).join("")+`</div></div>`
       ).join("")+`</div>`:`<div class="mempty2">人員がいません。</div>`);
+  } else if(mTab==="tag"){
+    body.innerHTML=`<div class="mcount">人員に付けられる自由タグ。名前と色を変更できます（名前が空のタグは凡例に出ません）。</div>`+
+      (customTags.length?`<div class="mlist">`+customTags.map((c,i)=>
+        `<div class="mrow"><input data-ci="${i}" data-cf="label" value="${esc(c.label)}" placeholder="タグ名（例: 玉掛・職長・送迎）"><button class="mdelbtn" data-cdel="${i}">削除</button>`+
+        `<div class="mtagrow swatches">`+PALETTE.map(col=>`<button class="sw ${c.color===col?'on':''}" data-ci="${i}" data-col="${col}" style="background:${col}"></button>`).join("")+`</div></div>`
+      ).join("")+`</div>`:`<div class="mempty2">タグがありません。下の「＋」で追加できます。</div>`);
   } else {
     body.innerHTML=`<div class="mcount">${vehicles.length}台 — 車両名を編集／削除できます。</div>`+
       (vehicles.length?`<div class="mlist">`+vehicles.map((v,i)=>
@@ -827,6 +856,7 @@ $("mBody").addEventListener("change",e=>{
     save();render();
   }else if(t.dataset.pf==="name"){ const i=+t.dataset.pi; if(!people[i])return; pushUndo(); people[i].name=t.value.trim(); save(); render(); }
   else if(t.dataset.vf==="name"){ const i=+t.dataset.vi; if(!vehicles[i])return; pushUndo(); vehicles[i].name=t.value.trim(); save(); render(); }
+  else if(t.dataset.cf==="label"){ const i=+t.dataset.ci; if(!customTags[i])return; pushUndo(); customTags[i].label=t.value.trim(); save(); render(); renderMasterBody(); }
 });
 $("mBody").addEventListener("click",e=>{
   const del=e.target.closest("[data-mdel]");
@@ -841,15 +871,21 @@ $("mBody").addEventListener("click",e=>{
   const tg=e.target.closest("[data-ptag]");
   if(tg){const p=byId(people,tg.dataset.ptag); if(!p)return; const k=tg.dataset.tg; pushUndo();
     if(p.tags.includes(k))p.tags=p.tags.filter(x=>x!==k); else p.tags.push(k); save();render();renderMasterBody(); return;}
+  const cdel=e.target.closest("[data-cdel]");
+  if(cdel){const i=+cdel.dataset.cdel, c=customTags[i]; if(!c)return;
+    if(confirm("タグ「"+(c.label||"")+"」を削除しますか？（人員から外れます）")){pushUndo();const id=c.id;customTags.splice(i,1);people.forEach(p=>p.tags=p.tags.filter(x=>x!==id));save();render();renderMasterBody();} return;}
+  const sw=e.target.closest(".sw");
+  if(sw){const i=+sw.dataset.ci; if(!customTags[i])return; pushUndo(); customTags[i].color=sw.dataset.col; save();render();renderMasterBody(); return;}
 });
 $("mAdd").addEventListener("click",()=>{
   pushUndo();
   if(mTab==="client")clientMaster.push({name:"",reading:""});
   else if(mTab==="site")siteMaster.push({name:"",reading:""});
   else if(mTab==="person")people.push({id:"p"+Date.now(),name:"",tags:[]});
+  else if(mTab==="tag")customTags.push({id:"c"+Date.now(),label:"",color:PALETTE[customTags.length%PALETTE.length]});
   else vehicles.push({id:"v"+Date.now(),name:""});
-  save();renderMasterBody();
-  const ins=$("mBody").querySelectorAll('input[data-mf="name"],input[data-pf="name"],input[data-vf="name"]');
+  save();render();renderMasterBody();
+  const ins=$("mBody").querySelectorAll('input[data-mf="name"],input[data-pf="name"],input[data-vf="name"],input[data-cf="label"]');
   if(ins.length)ins[ins.length-1].focus();
 });
 $("masterBtn").addEventListener("click",openMasterModal);
