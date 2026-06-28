@@ -4,7 +4,15 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
 <meta name="robots" content="noindex" />
-<title>らくらく手配 — 配車表エディタ プロトタイプ</title>
+<title>らくらく手配 — 配車表</title>
+<link rel="manifest" href="manifest.webmanifest" />
+<meta name="theme-color" content="#2f6fed" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="default" />
+<meta name="apple-mobile-web-app-title" content="らくらく手配" />
+<link rel="icon" href="icon.svg" type="image/svg+xml" />
+<link rel="apple-touch-icon" href="icon.svg" />
 <script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
 <style>
   :root{
@@ -38,6 +46,14 @@
   .toolbtn.view{border-color:var(--green);color:var(--green);font-weight:700}
   .toolbtn.xls{border-color:#1f7a44;color:#1f7a44;font-weight:700}
   .toolbtn.fs{border-color:#7b54d6;color:#7b54d6;font-weight:700}
+  .toolbtn.install{border-color:var(--green);color:var(--green);font-weight:700}
+  .moreWrap{position:relative}
+  .moremenu{position:absolute;right:0;top:calc(100% + 6px);background:#fff;border:1px solid var(--line);border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.18);z-index:40;min-width:190px;overflow:hidden}
+  .moremenu.hidden{display:none}
+  .moremenu button{display:block;width:100%;text-align:left;padding:12px 14px;border:none;background:#fff;font-size:13px;cursor:pointer;border-bottom:1px solid #f0f3f6}
+  .moremenu button:last-child{border-bottom:none}
+  .moremenu button:active{background:#f0f6ff}
+  .moremenu button.danger{color:var(--red)}
   .presence{margin-left:auto;display:flex;gap:4px;align-items:center;font-size:12px;color:var(--sub)}
   .ava{width:22px;height:22px;border-radius:50%;background:var(--green);color:#fff;display:grid;place-items:center;font-size:11px;border:2px solid #fff;box-shadow:0 0 0 1px var(--green)}
   .alertbar{margin-top:6px;font-size:13px;display:flex;gap:12px;flex-wrap:wrap;color:var(--sub)}
@@ -152,9 +168,15 @@
     <button class="toolbtn mode" id="modeBtn">かんたん操作</button>
     <button class="toolbtn xls" id="excelBtn">Excel出力</button>
     <button class="toolbtn" id="copyPrev">前日コピー</button>
-    <button class="toolbtn" id="exportBtn">保存</button>
-    <button class="toolbtn" id="importBtn">復元</button>
-    <button class="toolbtn" id="resetAll">初期化</button>
+    <button class="toolbtn install" id="installBtn" style="display:none">📲 ホーム画面に追加</button>
+    <div class="moreWrap">
+      <button class="toolbtn" id="moreBtn">⋯ その他</button>
+      <div class="moremenu hidden" id="moreMenu">
+        <button id="exportBtn">💾 保存（バックアップ）</button>
+        <button id="importBtn">📂 復元</button>
+        <button class="danger" id="resetAll">↺ 初期化（サンプルに戻す）</button>
+      </div>
+    </div>
     <input type="file" id="importFile" accept="application/json" style="display:none">
     <div class="presence"><span class="ava">山</span><span class="ava" style="background:#7b54d6;box-shadow:0 0 0 1px #7b54d6">佐</span> 編集中</div>
   </div>
@@ -734,6 +756,24 @@ $("selinfo").addEventListener("click",e=>{
 $("addPerson").addEventListener("click",openPersonModal);
 $("addSite").addEventListener("click",openSiteModal);
 $("addVeh").addEventListener("click",openVehModal);
+
+// ---- その他メニュー（保存/復元/初期化） ----
+$("moreBtn").addEventListener("click",e=>{e.stopPropagation();$("moreMenu").classList.toggle("hidden");});
+$("moreMenu").addEventListener("click",()=>setTimeout(()=>$("moreMenu").classList.add("hidden"),0));
+document.addEventListener("click",e=>{if(!(e.target.closest&&e.target.closest(".moreWrap")))$("moreMenu").classList.add("hidden");});
+
+// ---- PWA: ホーム画面に追加 ----
+let deferredPrompt=null;
+window.addEventListener("beforeinstallprompt",e=>{e.preventDefault();deferredPrompt=e;$("installBtn").style.display="";});
+$("installBtn").addEventListener("click",async()=>{
+  if(deferredPrompt){deferredPrompt.prompt();try{await deferredPrompt.userChoice;}catch(e){}deferredPrompt=null;$("installBtn").style.display="none";}
+  else{alert("ホーム画面に追加：\n\n・iPhone(Safari)：共有ボタン □↑ →「ホーム画面に追加」\n・Android(Chrome)：⋮ メニュー →「アプリをインストール」");}
+});
+window.addEventListener("appinstalled",()=>{$("installBtn").style.display="none";});
+(function(){const ua=navigator.userAgent||"";const iOS=/iphone|ipad|ipod/i.test(ua);const standalone=(window.matchMedia&&window.matchMedia("(display-mode: standalone)").matches)||navigator.standalone;if(iOS&&!standalone)$("installBtn").style.display="";})();
+
+// ---- Service Worker（オフライン動作） ----
+if("serviceWorker" in navigator){window.addEventListener("load",()=>{navigator.serviceWorker.register("sw.js").catch(()=>{});});}
 
 applyFs();
 render();
