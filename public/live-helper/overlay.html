@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>オーバーレイ — こえオーバーレイ</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%8E%AC%3C/text%3E%3C/svg%3E" />
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: transparent; /* OBSで透過 */
+      font-family: "Hiragino Kaku Gothic ProN", "Noto Sans JP", "Yu Gothic", sans-serif;
+    }
+    /* プレビュー時だけ背景を市松模様で「透明」を可視化 */
+    body.preview {
+      background-color: #1b1f2a;
+      background-image:
+        linear-gradient(45deg, #232838 25%, transparent 25%),
+        linear-gradient(-45deg, #232838 25%, transparent 25%),
+        linear-gradient(45deg, transparent 75%, #232838 75%),
+        linear-gradient(-45deg, transparent 75%, #232838 75%);
+      background-size: 24px 24px;
+      background-position: 0 0, 0 12px, 12px -12px, -12px 0;
+    }
+    #stage {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      padding: 24px;
+      box-sizing: border-box;
+      gap: 12px;
+    }
+    .bubble {
+      align-self: flex-start;
+      max-width: 70%;
+      padding: 10px 16px;
+      border-radius: 14px;
+      background: rgba(255, 255, 255, 0.92);
+      color: #1a1a2e;
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+      line-height: 1.4;
+      word-break: break-word;
+      animation: pop 0.28s ease-out;
+    }
+    .bubble .who {
+      display: block;
+      font-size: 0.6em;
+      font-weight: 700;
+      color: #6c5ce7;
+      margin-bottom: 2px;
+    }
+    .bubble.flowing {
+      animation: pop 0.28s ease-out, fadeUp 0.5s ease-out;
+    }
+    @keyframes pop {
+      from { transform: scale(0.85) translateY(8px); opacity: 0; }
+      to   { transform: scale(1) translateY(0); opacity: 1; }
+    }
+    @keyframes fadeOut {
+      to { opacity: 0; transform: translateY(-10px); }
+    }
+    .bubble.leaving { animation: fadeOut 0.45s ease forwards; }
+    .empty-hint {
+      position: absolute;
+      top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      color: rgba(255,255,255,0.45);
+      font-size: 16px;
+      text-align: center;
+    }
+    body:not(.preview) .empty-hint { display: none; }
+  </style>
+</head>
+<body>
+  <div id="stage"></div>
+  <div class="empty-hint">ここにコメントが表示されます<br>（管理画面からコメントを送ってみてください）</div>
+  <script src="./js/bus.js"></script>
+  <script src="./js/overlay.js"></script>
+</body>
+</html>

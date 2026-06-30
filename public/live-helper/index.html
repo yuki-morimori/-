@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>こえオーバーレイ — 配信コメント読み上げ＆表示ツール</title>
+  <meta name="description" content="配信のコメントを読み上げ・画面表示する、ブラウザだけで動く配信支援ツール。OBS対応・GPU不要・無料。" />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%8E%AC%3C/text%3E%3C/svg%3E" />
+  <link rel="stylesheet" href="./css/style.css" />
+</head>
+<body class="control">
+  <header class="topbar">
+    <h1>🎬 こえオーバーレイ</h1>
+    <p class="tagline">配信コメントを<strong>読み上げ</strong>＆<strong>画面表示</strong>するツール（ブラウザだけで動作・GPU不要）</p>
+  </header>
+
+  <main class="layout">
+    <!-- 左：操作パネル -->
+    <section class="panel">
+      <h2>① コメントを送る</h2>
+      <form id="comment-form" class="comment-form" autocomplete="off">
+        <input id="name-input" type="text" placeholder="名前（任意）" maxlength="24" />
+        <textarea id="text-input" placeholder="コメント本文を入力して Enter で送信" rows="2" maxlength="200" required></textarea>
+        <button type="submit" class="btn primary">送信 ▶</button>
+      </form>
+
+      <div class="row">
+        <button id="demo-toggle" class="btn">▶ デモ自動再生</button>
+        <button id="clear-btn" class="btn ghost">表示をクリア</button>
+      </div>
+
+      <h2>② 読み上げ設定</h2>
+      <label class="switch">
+        <input type="checkbox" id="tts-enabled" checked />
+        <span>コメントを読み上げる（TTS）</span>
+      </label>
+
+      <label class="field">
+        <span>音声</span>
+        <select id="voice-select"></select>
+      </label>
+
+      <label class="field">
+        <span>速度 <output id="rate-out">1.0</output></span>
+        <input type="range" id="rate" min="0.5" max="2" step="0.1" value="1" />
+      </label>
+
+      <label class="field">
+        <span>高さ <output id="pitch-out">1.0</output></span>
+        <input type="range" id="pitch" min="0" max="2" step="0.1" value="1" />
+      </label>
+
+      <label class="field">
+        <span>音量 <output id="volume-out">1.0</output></span>
+        <input type="range" id="volume" min="0" max="1" step="0.1" value="1" />
+      </label>
+
+      <label class="switch">
+        <input type="checkbox" id="read-name" />
+        <span>名前も読み上げる（「〇〇さん」）</span>
+      </label>
+
+      <button id="test-voice" class="btn ghost">🔊 声をテスト</button>
+
+      <h2>③ 表示設定</h2>
+      <label class="field">
+        <span>表示スタイル</span>
+        <select id="style-select">
+          <option value="flow">流れる（下から上）</option>
+          <option value="stack">積み上げ（新着が下）</option>
+        </select>
+      </label>
+      <label class="field">
+        <span>文字サイズ <output id="size-out">28</output>px</span>
+        <input type="range" id="font-size" min="16" max="64" step="2" value="28" />
+      </label>
+    </section>
+
+    <!-- 右：プレビュー＆OBS連携 -->
+    <section class="panel preview-panel">
+      <div class="preview-head">
+        <h2>プレビュー</h2>
+        <a id="popout" href="./overlay.html" target="_blank" rel="noopener" class="btn small">⤢ オーバーレイを別窓で開く</a>
+      </div>
+
+      <div class="preview-stage" id="preview-stage">
+        <iframe id="overlay-frame" src="./overlay.html?preview=1" title="オーバーレイプレビュー"></iframe>
+      </div>
+
+      <div class="obs-help">
+        <h3>📺 OBSで使う手順</h3>
+        <ol>
+          <li>「ソースを追加」→「ブラウザ」を選ぶ</li>
+          <li>URL に <code id="overlay-url">overlay.html</code> を貼る（<button id="copy-url" class="link-btn">URLをコピー</button>）</li>
+          <li>幅 1920 / 高さ 1080 に設定</li>
+          <li>この管理画面を<strong>同じブラウザで開いたまま</strong>コメントを送ると、OBSに反映されます</li>
+        </ol>
+        <p class="note">※ コメントは同一ブラウザ内で連携します（外部サーバー不要）。配信PCのOBS内蔵ブラウザと、この管理画面を同じPCで開いてください。</p>
+      </div>
+    </section>
+  </main>
+
+  <footer class="foot">
+    <span>こえオーバーレイ — ブラウザだけで動く配信支援ツール</span>
+  </footer>
+
+  <script src="./js/bus.js"></script>
+  <script src="./js/app.js"></script>
+</body>
+</html>
